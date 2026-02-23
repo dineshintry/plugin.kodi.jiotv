@@ -40,6 +40,9 @@ from resources.lib.utils import (
     getCachedDictionary,
     cleanLocalCache,
     getFeatured,
+    getVODContent,
+    getVODChannels,
+    getChannelVODContent,
 )
 from resources.lib.constants import (
     GET_CHANNEL_URL,
@@ -54,6 +57,8 @@ from resources.lib.constants import (
     EPG_PATH,
     ADDON,
     ADDON_ID,
+    VOD_SRC,
+    VOD_CHANNELS_SRC,
 )
 
 # additional imports
@@ -86,6 +91,17 @@ def root(plugin):
                 "fanart": IMG_CATCHUP_SHOWS + "cms/TKSS_Carousal1.jpg",
             },
             "callback": Route.ref("/resources/lib/main:show_featured"),
+        }
+    )
+    yield Listitem.from_dict(
+        **{
+            "label": "Video on Demand",
+            "art": {
+                "thumb": IMG_CATCHUP_SHOWS + "cms/210528144026.jpg",
+                "icon": IMG_CATCHUP_SHOWS + "cms/210528144026.jpg",
+                "fanart": IMG_CATCHUP_SHOWS + "cms/210528144026.jpg",
+            },
+            "callback": Route.ref("/resources/lib/main:show_vod"),
         }
     )
     for e in ["Genres", "Languages"]:
@@ -172,11 +188,9 @@ def show_featured(plugin, id=None):
                         info_dict["callback"] = play
                         info_dict["params"] = {
                             "channel_id": child.get("channel_id"),
-                            "showtime": child.get("showtime", "").replace(":", ""),
-                            "srno": datetime.fromtimestamp(
-                                int(child.get("startEpoch", 0) * 0.001)
-                            ).strftime("%Y%m%d"),
-                            "programId": child.get("srno", ""),
+                            "showtime": datetime.fromtimestamp(int(child.get("startEpoch", 0) * 0.001)).strftime("%H%M%S"),  # Generate from startEpoch
+                            "srno": datetime.fromtimestamp(int(child.get("startEpoch", 0) * 0.001)).strftime("%Y%m%d"),  # Use date as srno
+                            "programId": child.get("showId") if child.get("showId") else f"CHN-{child.get('channel_id')}-PRG-{datetime.fromtimestamp(int(child.get('startEpoch', 0) * 0.001)).strftime('%Y%m%d%H%M')}",  # Generate unique programId
                             "begin": datetime.utcfromtimestamp(
                                 int(child.get("startEpoch", 0) * 0.001)
                             ).strftime("%Y%m%dT%H%M%S"),
@@ -199,6 +213,335 @@ def show_featured(plugin, id=None):
                     },
                     "callback": Route.ref("/resources/lib/main:show_featured"),
                     "params": {"id": each.get("id")},
+                }
+            )
+
+
+# Shows VOD Content
+@Route.register
+def show_vod(plugin, category=None):
+    vod_content = getVODContent()
+    vod_channels = getVODChannels()
+    
+    if not vod_content and not vod_channels:
+        yield Listitem.from_dict(
+            **{
+                "label": "No VOD content available",
+                "callback": "",
+            }
+        )
+        return
+    
+    # Show VOD channels if available
+    if vod_channels:
+        yield Listitem.from_dict(
+            **{
+                "label": "VOD Channels",
+                "art": {
+                    "thumb": IMG_CATCHUP_SHOWS + "cms/210528144026.jpg",
+                    "icon": IMG_CATCHUP_SHOWS + "cms/210528144026.jpg",
+                    "fanart": IMG_CATCHUP_SHOWS + "cms/210528144026.jpg",
+                },
+                "callback": Route.ref("/resources/lib/main:show_vod_channels"),
+            }
+        )
+    
+    # Show VOD content by category
+    if vod_content:
+        # Group content by category if categories exist
+        categories = {}
+        for item in vod_content:
+            cat = item.get("category", "General")
+            if cat not in categories:
+                categories[cat] = []
+            categories[cat].append(item)
+        
+        for cat_name, items in categories.items():
+            yield Listitem.from_dict(
+                **{
+                    "label": cat_name,
+                    "art": {
+                        "thumb": IMG_CATCHUP_SHOWS + items[0].get("episodePoster", "cms/210528144026.jpg"),
+                        "icon": IMG_CATCHUP_SHOWS + items[0].get("episodePoster", "cms/210528144026.jpg"),
+                        "fanart": IMG_CATCHUP_SHOWS + items[0].get("episodePoster", "cms/210528144026.jpg"),
+                    },
+                    "callback": Route.ref("/resources/lib/main:show_vod_category"),
+                    "params": {"category": cat_name},
+                }
+            )
+
+
+# Shows VOD content by category
+@Route.register
+def show_vod_category(plugin, category):
+    vod_content = getVODContent()
+    
+    # Filter by category if specified
+    if category != "All":
+        vod_content = [item for item in vod_content if item.get("_vodCategory") == category]
+    
+    if not vod_content:
+        yield Listitem.from_dict(
+            **{
+                "label": f"No VOD content in {category}",
+                "callback": "",
+            }
+        )
+        return
+    
+    for item in vod_content:
+        # For featured content that acts as VOD, we need to handle it differently
+        # Since it's not true VOD, we'll try to find the channel and use catchup
+        channel_id = item.get("channel_id")
+        
+        info_dict = {
+            "art": {
+                "thumb": IMG_CATCHUP_SHOWS + item.get("episodePoster", ""),
+                "icon": IMG_CATCHUP_SHOWS + item.get("episodePoster", ""),
+                "fanart": IMG_CATCHUP_SHOWS + item.get("episodePoster", ""),
+                "clearart": IMG_CATCHUP + item.get("logoUrl", ""),
+                "clearlogo": IMG_CATCHUP + item.get("logoUrl", ""),
+            },
+            "info": {
+                "title": item.get("showname", ""),
+                "originaltitle": item.get("showname", ""),
+                "tvshowtitle": item.get("showname", ""),
+                "genre": item.get("showGenre", ""),
+                "plot": item.get("description", ""),
+                "episodeguide": item.get("episode_desc", ""),
+                "episode": 0 if item.get("episode_num") == -1 else item.get("episode_num", 0),
+                "season": item.get("season_num", 1),
+                "cast": item.get("starCast", "").split(", ") if item.get("starCast") else [],
+                "director": item.get("director", ""),
+                "duration": item.get("duration", 0) * 60 if item.get("duration") else 0,
+                "tag": item.get("keywords", ""),
+                "mediatype": "movie" if item.get("channel_category_name") == "Movies" else "episode",
+                "year": int(item.get("year", 0)) if item.get("year") and item.get("year").isdigit() else 0,
+            },
+            "label": item.get("showname", ""),
+        }
+        
+        if channel_id:
+            # If we have a channel_id, try to play it as catchup
+            info_dict["callback"] = play
+            info_dict["params"] = {
+                "channel_id": channel_id,
+                "showtime": datetime.fromtimestamp(int(item.get("startEpoch", 0)) // 1000).strftime("%H%M%S"),  # Generate from startEpoch
+                "srno": datetime.fromtimestamp(int(item.get("startEpoch", 0)) // 1000).strftime("%Y%m%d"),  # Use date as srno
+                "programId": item.get("showId") if item.get("showId") else f"CHN-{channel_id}-PRG-{datetime.fromtimestamp(int(item.get('startEpoch', 0)) // 1000).strftime('%Y%m%d%H%M')}",  # Generate unique programId
+                "begin": datetime.utcfromtimestamp(int(item.get("startEpoch", 0)) // 1000).strftime("%Y%m%dT%H%M%S"),
+                "end": datetime.utcfromtimestamp(int(item.get("endEpoch", 0)) // 1000).strftime("%Y%m%dT%H%M%S"),
+            }
+        else:
+            # No channel_id, show as info only
+            info_dict["callback"] = ""
+            info_dict["label"] += " [No channel info]"
+        
+        yield Listitem.from_dict(**info_dict)
+
+
+# Shows VOD channels
+@Route.register
+def show_vod_channels(plugin):
+    vod_channels = getVODChannels()
+    dictionary = getCachedDictionary()
+    LANG_MAP = dictionary.get("languageIdMapping")
+    
+    # Group VOD channels by language for better accessibility
+    vod_by_language = {}
+    for channel in vod_channels:
+        lang_id = str(channel.get("channelLanguageId", ""))
+        if lang_id in LANG_MAP:
+            lang_name = LANG_MAP[lang_id]
+            if lang_name not in vod_by_language:
+                vod_by_language[lang_name] = []
+            vod_by_language[lang_name].append(channel)
+        else:
+            # Uncategorized
+            if "Other" not in vod_by_language:
+                vod_by_language["Other"] = []
+            vod_by_language["Other"].append(channel)
+    
+    # Add language categories
+    for lang_name, channels in sorted(vod_by_language.items()):
+        if channels:  # Only show languages that have channels
+            yield Listitem.from_dict(
+                **{
+                    "label": f"{lang_name} [COLOR cyan][VOD][/COLOR]",
+                    "art": {
+                        "thumb": IMG_CONFIG["Languages"].get(lang_name, {}).get("tvImg", ""),
+                        "icon": IMG_CONFIG["Languages"].get(lang_name, {}).get("tvImg", ""),
+                        "fanart": IMG_CONFIG["Languages"].get(lang_name, {}).get("promoImg", ""),
+                    },
+                    "callback": Route.ref("/resources/lib/main:show_vod_channels_by_language"),
+                    "params": {"language": lang_name},
+                }
+            )
+    
+    # Add uncategorized channels if any
+    if "Other" in vod_by_language and vod_by_language["Other"]:
+        yield Listitem.from_dict(
+            **{
+                "label": f"Other [COLOR cyan][VOD][/COLOR]",
+                "art": {
+                    "thumb": IMG_CONFIG["Genres"].get("Other", {}).get("tvImg", ""),
+                    "icon": IMG_CONFIG["Genres"].get("Other", {}).get("tvImg", ""),
+                    "fanart": IMG_CONFIG["Genres"].get("Other", {}).get("promoImg", ""),
+                },
+                "callback": Route.ref("/resources/lib/main:show_vod_channels_by_language"),
+                "params": {"language": "Other"},
+            }
+        )
+
+
+# Shows VOD channels by language
+@Route.register
+def show_vod_channels_by_language(plugin, language):
+    vod_channels = getVODChannels()
+    dictionary = getCachedDictionary()
+    LANG_MAP = dictionary.get("languageIdMapping")
+    
+    for channel in vod_channels:
+        lang_id = str(channel.get("channelLanguageId", ""))
+        if lang_id in LANG_MAP and LANG_MAP[lang_id] == language:
+            if Settings.get_boolean("number_toggle"):
+                channel_number = int(channel.get("channel_order", 0)) + 1
+                channel_name = str(channel_number) + " " + channel.get("channel_name", "")
+            else:
+                channel_name = channel.get("channel_name", "")
+                
+            yield Listitem.from_dict(
+                **{
+                    "label": channel_name + " [COLOR cyan][VOD][/COLOR]",
+                    "art": {
+                        "thumb": IMG_CATCHUP + channel.get("logoUrl", ""),
+                        "icon": IMG_CATCHUP + channel.get("logoUrl", ""),
+                        "fanart": IMG_CATCHUP + channel.get("logoUrl", ""),
+                        "clearlogo": IMG_CATCHUP + channel.get("logoUrl", ""),
+                        "clearart": IMG_CATCHUP + channel.get("logoUrl", ""),
+                    },
+                    "callback": Route.ref("/resources/lib/main:show_vod_channel_content"),
+                    "params": {"channel_id": channel.get("channel_id", "")},
+                }
+            )
+
+# Shows VOD content for a specific channel
+@Route.register
+def show_vod_channel_content(plugin, channel_id, offset_days=None):
+    # If offset_days is specified, show content for that specific day
+    if offset_days is not None:
+        # Show VOD content for the specific day
+        vod_content = getChannelVODContent(channel_id, offset_days)
+        
+        if not vod_content:
+            yield Listitem.from_dict(
+                **{
+                    "label": f"No VOD content available for this channel ({offset_days if offset_days > 0 else 'today'})",
+                    "callback": "",
+                }
+            )
+            return
+        
+        # Display VOD content sorted by most recent first
+        for item in vod_content:
+            # Format the time display with start and end times
+            start_epoch = item.get("startEpoch", 0)
+            end_epoch = item.get("endEpoch", 0)
+            
+            # Skip items with invalid timestamps
+            if not start_epoch or not end_epoch or start_epoch <= 0 or end_epoch <= 0:
+                Script.log(f"[VOD-DEBUG] Skipping item with invalid timestamps: start={start_epoch}, end={end_epoch}", lvl=Script.WARNING)
+                continue
+            
+            try:
+                start_time = datetime.fromtimestamp(int(start_epoch) // 1000)
+                end_time = datetime.fromtimestamp(int(end_epoch) // 1000)
+                timetext = f"  [{start_time.strftime('%I:%M %p')} - {end_time.strftime('%I:%M %p')}]"
+            except (ValueError, OSError) as e:
+                Script.log(f"[VOD-DEBUG] Error parsing timestamps for '{item.get('showname', '')}': {e}", lvl=Script.ERROR)
+                # Fallback to no timestamp display
+                timetext = ""
+            
+            # Add relative time for better UX
+            current_time = datetime.now()
+            time_diff = current_time - start_time
+            
+            if time_diff.days == 0:
+                if time_diff.seconds < 3600:
+                    time_ago = f"{time_diff.seconds // 60} minutes ago"
+                else:
+                    time_ago = f"{time_diff.seconds // 3600} hours ago"
+            else:
+                time_ago = f"{time_diff.days} days ago"
+            
+            # Final label format - debug what's being shown
+            if timetext.strip():
+                label = f"{item.get('showname', '')} [{time_ago}]{timetext}"
+            else:
+                label = f"{item.get('showname', '')} [{time_ago}] [NO TIME INFO]"
+            
+            info_dict = {
+                "art": {
+                    "thumb": IMG_CATCHUP_SHOWS + item.get("episodePoster", ""),
+                    "icon": IMG_CATCHUP_SHOWS + item.get("episodePoster", ""),
+                    "fanart": IMG_CATCHUP_SHOWS + item.get("episodePoster", ""),
+                    "clearart": IMG_CATCHUP + item.get("logoUrl", ""),
+                    "clearlogo": IMG_CATCHUP + item.get("logoUrl", ""),
+                },
+                "info": {
+                    "title": item.get("showname", ""),
+                    "originaltitle": item.get("showname", ""),
+                    "tvshowtitle": item.get("showname", ""),
+                    "genre": item.get("showGenre", ""),
+                    "plot": item.get("description", ""),
+                    "episodeguide": item.get("episode_desc", ""),
+                    "episode": 0 if item.get("episode_num") == -1 else item.get("episode_num", 0),
+                    "season": item.get("season_num", 1),
+                    "cast": item.get("starCast", "").split(", ") if item.get("starCast") else [],
+                    "director": item.get("director", ""),
+                    "duration": item.get("duration", 0) * 60 if item.get("duration") else 0,
+                    "tag": item.get("keywords", ""),
+                    "mediatype": "episode",
+                    "year": int(item.get("year", 0)) if item.get("year") and item.get("year").isdigit() else 0,
+                    "date": start_time.strftime("%d.%m.%Y"),
+                },
+                "label": label,
+                "callback": play,
+                "params": {
+                    "channel_id": channel_id,
+                    "showtime": datetime.fromtimestamp(int(item.get("startEpoch", 0)) // 1000).strftime("%H%M%S"),  # Generate from startEpoch
+                    "srno": datetime.fromtimestamp(int(item.get("startEpoch", 0)) // 1000).strftime("%Y%m%d"),  # Use date as srno
+                    "programId": item.get("showId") if item.get("showId") else f"CHN-{channel_id}-PRG-{datetime.fromtimestamp(int(item.get('startEpoch', 0)) // 1000).strftime('%Y%m%d%H%M')}",  # Generate unique programId
+                    "begin": datetime.utcfromtimestamp(int(item.get("startEpoch", 0)) // 1000).strftime("%Y%m%dT%H%M%S"),
+                    "end": datetime.utcfromtimestamp(int(item.get("endEpoch", 0)) // 1000).strftime("%Y%m%dT%H%M%S"),
+                },
+            }
+            Script.log(f"[VOD-DEBUG] Generated VOD params for '{item.get('showname', '')}': channel_id={channel_id}, showtime={info_dict['params']['showtime']}, srno={info_dict['params']['srno']}, programId={info_dict['params']['programId'][:50]}...", lvl=Script.INFO)
+            Script.log(f"[VOD-DEBUG] Generated VOD params for '{item.get('showname', '')}': channel_id={channel_id}, showtime={info_dict['params']['showtime']}, srno={info_dict['params']['srno']}, programId={info_dict['params']['programId'][:50]}...", lvl=Script.INFO)
+
+            yield Listitem.from_dict(**info_dict)
+    
+    else:
+        # Show day selection folders (0-7 days ago) - initial call
+        for days_ago in range(8):  # Today + 7 days back
+            if days_ago == 0:
+                label = "Today"
+                description = "VOD content from today"
+            elif days_ago == 1:
+                label = "1 Day Ago"
+                description = "VOD content from yesterday"
+            else:
+                label = f"{days_ago} Days Ago"
+                description = f"VOD content from {days_ago} days ago"
+            
+            yield Listitem.from_dict(
+                **{
+                    "label": label,
+                    "info": {
+                        "plot": description,
+                    },
+                    "callback": Route.ref("/resources/lib/main:show_vod_channel_content"),
+                    "params": {"channel_id": channel_id, "offset_days": days_ago},
                 }
             )
 
@@ -260,12 +603,31 @@ def isPlayAbleGenre(each, GENRE_MAP):
 @Route.register
 def show_category(plugin, categoryOrLang, by):
     resp = getCachedChannels()
+    if not resp:
+        # Channel list failed to load
+        yield Listitem.from_dict(
+            **{
+                "label": "Error: Unable to load channel list. Check your connection and try again.",
+                "callback": "",
+            }
+        )
+        return
+        
     dictionary = getCachedDictionary()
+    if not dictionary:
+        yield Listitem.from_dict(
+            **{
+                "label": "Error: Unable to load channel dictionary.",
+                "callback": "",
+            }
+        )
+        return
+        
     GENRE_MAP = dictionary.get("channelCategoryMapping")
     LANG_MAP = dictionary.get("languageIdMapping")
 
     def fltr(x):
-        fby = by.lower()[:-1]
+        fby = by.lower()[:-1] if by.endswith("s") else by.lower()
         if fby == "genre":
             return GENRE_MAP[
                 str(x.get("channelCategoryId"))
@@ -314,6 +676,18 @@ def show_category(plugin, categoryOrLang, by):
                     }
                 )
                 if each.get("isCatchupAvailable"):
+                    # Generate proper VOD parameters from EPG data
+                    start_time = datetime.fromtimestamp(int(each.get("startEpoch", 0) * 0.001))
+                    catchup_params = {
+                        "channel_id": each.get("channel_id"),
+                        "showtime": start_time.strftime("%H%M%S"),  # Generate from startEpoch
+                        "srno": start_time.strftime("%Y%m%d"),  # Use date as srno
+                        "programId": each.get("showId") if each.get("showId") else f"CHN-{each.get('channel_id')}-PRG-{start_time.strftime('%Y%m%d%H%M')}",  # Generate unique programId
+                        "begin": datetime.utcfromtimestamp(int(each.get("startEpoch", 0) * 0.001)).strftime("%Y%m%dT%H%M%S"),
+                        "end": datetime.utcfromtimestamp(int(each.get("endEpoch", 0) * 0.001)).strftime("%Y%m%dT%H%M%S"),
+                    }
+                    Script.log(f"EPG catchup params: {catchup_params}", lvl=Script.INFO)
+                    
                     litm.context.container(
                         show_epg, "Catchup", 0, each.get("channel_id")
                     )
@@ -321,7 +695,7 @@ def show_category(plugin, categoryOrLang, by):
     except Exception as e:
         Script.notify("Error", e)
         monitor.waitForAbort(1)
-        return False
+        return
 
 
 # Shows EPG container from Context menu
@@ -374,11 +748,9 @@ def show_epg(plugin, day, channel_id):
                 },
                 "params": {
                     "channel_id": each.get("channel_id"),
-                    "showtime": each.get("showtime", "").replace(":", ""),
-                    "srno": datetime.fromtimestamp(
-                        int(each.get("startEpoch", 0) * 0.001)
-                    ).strftime("%Y%m%d"),
-                    "programId": each.get("srno", ""),
+                    "showtime": datetime.fromtimestamp(int(each.get("startEpoch", 0) * 0.001)).strftime("%H%M%S"),  # Generate from startEpoch
+                    "srno": datetime.fromtimestamp(int(each.get("startEpoch", 0) * 0.001)).strftime("%Y%m%d"),  # Use date as srno
+                    "programId": each.get("showId") if each.get("showId") else f"CHN-{each.get('channel_id')}-PRG-{datetime.fromtimestamp(int(each.get('startEpoch', 0) * 0.001)).strftime('%Y%m%d%H%M')}",  # Generate unique programId
                     "begin": datetime.utcfromtimestamp(
                         int(each.get("startEpoch", 0) * 0.001)
                     ).strftime("%Y%m%dT%H%M%S"),
@@ -409,6 +781,8 @@ def show_epg(plugin, day, channel_id):
 @Resolver.register
 @isLoggedIn
 def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=None, end=None):
+    Script.log(f"[VOD-DEBUG] PLAY function called with: channel_id={channel_id}, showtime={showtime}, srno={srno}, programId={programId}, begin={begin}, end={end}", lvl=Script.INFO)
+
     # import web_pdb; web_pdb.set_trace()
     headerssony = getSonyHeaders()  # sony headers
     sony_headers = getSonyHeaders()
@@ -416,13 +790,16 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
         is_helper = inputstreamhelper.Helper("mpd", drm="com.widevine.alpha")
         hasIs = is_helper.check_inputstream()
         if not hasIs:
+            Script.log("[VOD-DEBUG] InputStream helper check failed", lvl=Script.ERROR)
             return
 
         channel_id_str = str(channel_id)
-        
+
         stream_type = "Seek"
         rjson = {"channel_id": int(channel_id), "stream_type": stream_type}
         isCatchup = False
+
+        # Determine if this is a VOD/catchup request
         if showtime and srno:
             isCatchup = True
             rjson["showtime"] = showtime
@@ -431,12 +808,24 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
             rjson["programId"] = programId
             rjson["begin"] = begin
             rjson["end"] = end
-            Script.log(str(rjson), lvl=Script.INFO)
+            
+            # For VOD content, use different headers that might be more stable
+            headers = getHeaders()
+            headers["channelid"] = str(channel_id)
+            # Use a fresh token for VOD requests to avoid 403 errors
+            headers["srno"] = rjson["srno"]  # Use the actual srno from VOD params
+            headers["showtime"] = rjson["showtime"]  # Include showtime in headers
+            
+            Script.log(f"[VOD-DEBUG] VOD REQUEST DETECTED: stream_type=Catchup, params={rjson}", lvl=Script.INFO)
+            Script.log(f"[VOD-DEBUG] VOD HEADERS: srno={headers.get('srno')}, showtime={headers.get('showtime')}", lvl=Script.INFO)
+        else:
+            Script.log(f"[VOD-DEBUG] LIVE STREAM REQUEST: stream_type=Seek (no VOD params provided)", lvl=Script.INFO)
 
-        headers = getHeaders()
-        headers["channelid"] = str(channel_id)
-        headers["srno"] = str(uuid4()) if "srno" not in rjson else rjson["srno"]
-        enableHost = Settings.get_boolean("enablehost")
+            headers = getHeaders()
+            headers["channelid"] = str(channel_id)
+            # Use actual srno from VOD parameters, not random UUID
+            headers["srno"] = rjson["srno"] if isCatchup else str(uuid4())
+            enableHost = Settings.get_boolean("enablehost")
 
         # blindly setting zee channel id for test
         zee_channels = {
@@ -498,15 +887,48 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
 
             sony_headers = getSonyHeaders(channel_id=chan, languageId=langId)
             
+            # Build API data with all necessary parameters
+            api_data = f"stream_type={rjson['stream_type']}&channel_id={chan}"
+            
+            # Add VOD/catchup specific parameters
+            if isCatchup:
+                api_data += f"&srno={rjson.get('srno', '')}"
+                api_data += f"&programId={rjson.get('programId', '')}"
+                api_data += f"&begin={rjson.get('begin', '')}"
+                api_data += f"&end={rjson.get('end', '')}"
+                api_data += f"&showtime={rjson.get('showtime', '')}"
+            
+            Script.log(f"API call data: {api_data}", lvl=Script.INFO)
+            
             res = urlquick.post(
                 "https://jiotvapi.media.jio.com/playback/apis/v1.1/geturl",
-                data="stream_type=" + stream_type + "&channel_id=" + chan,
+                data=api_data,
                 verify=False,
                 headers=sony_headers,
                 max_age=-1,
             )  # 471 sab
 
             print(res)
+            Script.log(f"API response: {res.json()}", lvl=Script.INFO)
+
+            # Analyze API response for VOD vs Live detection
+            api_response = res.json()
+            result_url = api_response.get("result", "")
+            Script.log(f"[VOD-DEBUG] API result URL: {result_url}", lvl=Script.INFO)
+
+            # Check if this is actually a VOD URL or live URL
+            if isCatchup:
+                if "catchup" in result_url.lower() or "vod" in result_url.lower():
+                    Script.log("[VOD-DEBUG] SUCCESS: API returned VOD URL for catchup request", lvl=Script.INFO)
+                elif "live" in result_url.lower() or "seek" in result_url.lower():
+                    Script.log("[VOD-DEBUG] FAILURE: API returned LIVE URL for catchup request - FALLBACK DETECTED!", lvl=Script.ERROR)
+                else:
+                    Script.log(f"[VOD-DEBUG] UNKNOWN: API returned URL type for catchup: {result_url}", lvl=Script.WARNING)
+            else:
+                if "live" in result_url.lower() or "seek" in result_url.lower():
+                    Script.log("[VOD-DEBUG] SUCCESS: API returned live URL for live request", lvl=Script.INFO)
+                else:
+                    Script.log(f"[VOD-DEBUG] UNEXPECTED: API returned non-live URL for live request: {result_url}", lvl=Script.WARNING)
 
             sonyheaders = sony_headers
             sonyheaders["cookie"] = "__hdnea__" + res.json().get("result", "").split("__hdnea__")[-1]
@@ -524,6 +946,26 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
             resp = res.json()
         else:
             pass
+
+        # Final stream analysis before playback
+        final_url = ""
+        if channel_id in ["5016", "5017", "5023", "5024", "5025", "5026"]:
+            final_url = url
+            Script.log(f"[VOD-DEBUG] ZEE CHANNEL: Using hardcoded URL: {final_url}", lvl=Script.INFO)
+        else:
+            final_url = resp.get("result", "") if 'resp' in locals() else ""
+            Script.log(f"[VOD-DEBUG] JIO CHANNEL: API result URL: {final_url}", lvl=Script.INFO)
+
+        # Determine if this is actually VOD or live content
+        if isCatchup:
+            if "catchup" in final_url.lower() or "vod" in final_url.lower() or ("begin=" in final_url and "end=" in final_url):
+                Script.log("[VOD-DEBUG] FINAL RESULT: SUCCESS - Playing VOD content", lvl=Script.INFO)
+            elif "live" in final_url.lower() or "seek" in final_url.lower():
+                Script.log("[VOD-DEBUG] FINAL RESULT: FAILURE - FELL BACK TO LIVE despite VOD request!", lvl=Script.ERROR)
+            else:
+                Script.log(f"[VOD-DEBUG] FINAL RESULT: UNKNOWN stream type: {final_url}", lvl=Script.WARNING)
+        else:
+            Script.log("[VOD-DEBUG] FINAL RESULT: Playing live stream as requested", lvl=Script.INFO)
 
         art = {}
         if channel_id not in [
@@ -624,8 +1066,11 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
             if variant_m3u8.is_variant and (variant_m3u8.version is None or variant_m3u8.version < 7):
                 quality = quality_to_enum(qltyopt, len(variant_m3u8.playlists))
                 tmpurl = variant_m3u8.playlists[quality].uri
-                if isCatchup:
-                    tmpurl = variant_m3u8.playlists[quality].uri
+                # For VOD content, allow adaptive streaming when Best quality is selected
+                if isCatchup and qltyopt == "Best":
+                    # Use adaptive streaming instead of selecting specific quality
+                    pass  # Keep the master playlist for adaptive streaming
+                else:
                     if "?" in tmpurl:
                         uriToUse = uriToUse.split("?")[0].replace(onlyUrl, tmpurl)
                     else:
@@ -793,7 +1238,17 @@ def logout(plugin):
 @Script.register
 def m3ugen(plugin, notify="yes"):
     channels = getCachedChannels()
+    if not channels:
+        if notify == "yes":
+            Script.notify("JioTV", "Error: Unable to load channel list. Check your connection.")
+        return
+        
     dictionary = getCachedDictionary()
+    if not dictionary:
+        if notify == "yes":
+            Script.notify("JioTV", "Error: Unable to load channel dictionary.")
+        return
+        
     GENRE_MAP = dictionary.get("channelCategoryMapping")
     LANG_MAP = dictionary.get("languageIdMapping")
 

@@ -15,6 +15,9 @@ PLAY_URL = "plugin://plugin.kodi.jiotv/resources/lib/main/play/?"
 
 FEATURED_SRC = "https://tv.media.jio.com/apis/v1.4/getdata/featurednew?start=0&limit=30&langId=6"
 
+VOD_SRC = "https://tv.media.jio.com/apis/v1.4/getdata/vod?start=0&limit=50&langId=6"
+VOD_CHANNELS_SRC = "https://jiotvapi.cdn.jio.com/apis/v1.4/getVodChannels/get/?langId=6&devicetype=phone&os=android&usertype=JIO&version=396"
+
 
 CHANNELS_SRC_NEW = "https://jiotvapi.cdn.jio.com/apis/v1.4/getMobileChannelList/get/?langId=6&devicetype=phone&os=android&usertype=JIO&version=396"
 

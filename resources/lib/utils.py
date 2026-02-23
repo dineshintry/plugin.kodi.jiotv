@@ -25,10 +25,11 @@ import requests
 import re
 import ssl
 import urllib.request
+from datetime import datetime
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
-from resources.lib.constants import CHANNELS_SRC, DICTIONARY_URL, FEATURED_SRC
+from resources.lib.constants import CHANNELS_SRC, DICTIONARY_URL, FEATURED_SRC, VOD_SRC, VOD_CHANNELS_SRC
 
 
 def get_local_ip():
@@ -267,7 +268,176 @@ def getFeatured():
         ).json()
         return resp.get("featuredNewData", [])
     except:
-        Script.notify("Connection error ", "Retry after sometime")
+        # Script.notify("Connection error ", "Retry after sometime")
+        pass
+
+
+def getVODContent():
+    """
+    Get VOD-like content from available sources.
+    Since dedicated VOD endpoints don't exist, extract VOD-like content from featured data.
+    """
+    try:
+        # Get featured content which actually works
+        featured_data = getFeatured()
+        
+        # Check if featured_data is valid
+        if not featured_data:
+            Script.log("No featured data available for VOD extraction", lvl=Script.WARNING)
+            return []
+        
+        vod_like_content = []
+        
+        for category in featured_data:
+            if isinstance(category, dict) and "data" in category:
+                for item in category.get("data", []):
+                    # Extract VOD-like content: not live, not future, has poster
+                    show_status = item.get("showStatus", "")
+                    has_poster = item.get("episodePoster", "")
+                    
+                    if (show_status not in ["Now", "future"] and 
+                        has_poster and 
+                        item.get("description", "")):
+                        
+                        # Mark as VOD content
+                        item["_isVOD"] = True
+                        item["_vodCategory"] = category.get("name", "General")
+                        vod_like_content.append(item)
+        
+        if vod_like_content:
+            Script.log(f"Found {len(vod_like_content)} VOD-like items from featured content", lvl=Script.INFO)
+            return vod_like_content
+        else:
+            Script.log("No VOD-like content found in featured data", lvl=Script.INFO)
+            return []
+            
+    except Exception as e:
+        Script.log(f"Failed to extract VOD from featured: {e}", lvl=Script.ERROR)
+        return []
+
+
+def getVODChannels():
+    """
+    Get channels that are likely to support VOD/catchup content.
+    Since channel_category_name is None for all channels, use name-based detection.
+    """
+    try:
+        all_channels = getCachedChannels()
+        vod_channels = []
+        
+        for channel in all_channels:
+            channel_name = channel.get("channel_name", "").lower()
+            has_catchup = channel.get("isCatchupAvailable", False)
+            
+            # Entertainment brands that typically have VOD content
+            entertainment_brands = [
+                "colors", "star", "zee", "sony", "mtv", "bindass", "rishtey",
+                "&tv", "dd", "news", "aaj tak", "ndtv", "republic", "india today",
+                "times now", "cnbc", "tv18", "bbc", "fox", "hbo", "warner"
+            ]
+            
+            # Movie channels
+            movie_keywords = ["movies", "movie", "cinema", "films"]
+            
+            # Regional entertainment keywords
+            regional_keywords = ["tamil", "telugu", "malayalam", "kannada", "bengali", "marathi", "gujarati", "punjabi"]
+            
+            # Check if channel is VOD-capable
+            is_entertainment = any(brand in channel_name for brand in entertainment_brands)
+            is_movie_channel = any(movie in channel_name for movie in movie_keywords)
+            is_regional = any(region in channel_name for region in regional_keywords)
+            
+            # Include channels that match VOD criteria AND have catchup
+            if has_catchup and (is_entertainment or is_movie_channel or is_regional):
+                channel["_isVODChannel"] = True
+                channel["_vodReason"] = []
+                if is_entertainment:
+                    channel["_vodReason"].append("Entertainment Brand")
+                if is_movie_channel:
+                    channel["_vodReason"].append("Movie Channel")
+                if is_regional:
+                    channel["_vodReason"].append("Regional")
+                if has_catchup:
+                    channel["_vodReason"].append("Has Catchup")
+                
+                vod_channels.append(channel)
+        
+        if vod_channels:
+            # Sort by brand priority (Colors first, then Star, Zee, Sony, others)
+            def sort_key(channel):
+                name = channel.get("channel_name", "").lower()
+                if "colors" in name:
+                    return 0
+                elif "star" in name:
+                    return 1
+                elif "zee" in name:
+                    return 2
+                elif "sony" in name:
+                    return 3
+                else:
+                    return 4
+            
+            vod_channels.sort(key=sort_key)
+            Script.log(f"Found {len(vod_channels)} VOD-capable channels from {len(all_channels)} total channels", lvl=Script.INFO)
+            return vod_channels
+        else:
+            Script.log("No VOD-capable channels found", lvl=Script.INFO)
+            return []
+            
+    except Exception as e:
+        Script.log(f"Failed to get VOD channels: {e}", lvl=Script.ERROR)
+        return []
+
+
+def getChannelVODContent(channel_id, offset_days=0):
+    """
+    Get VOD-like content for a specific channel using catchup EPG data.
+    offset_days: 0 for most recent, 1 for yesterday, etc.
+    """
+    try:
+        headers = getHeaders()
+        if not headers:
+            Script.log("No headers available for channel VOD", lvl=Script.ERROR)
+            return []
+        
+        # Get EPG/catchup data for the channel with offset
+        # Use negative offset to go back in time
+        epg_url = f"https://jiotvapi.cdn.jio.com/apis/v1.3/getepg/get?offset={-offset_days}&channel_id={channel_id}&langId=6"
+        
+        resp = urlquick.get(epg_url, headers=headers, verify=False, max_age=-1, timeout=15)
+        epg_data = resp.json()
+        
+        vod_content = []
+        current_time = int(time.time() * 1000)
+        
+        for show in epg_data.get("epg", []):
+            # Include past shows with catchup availability (VOD-like)
+            if (show.get("stbCatchupAvailable") and 
+                show.get("startEpoch", 0) < current_time and
+                show.get("episodePoster") and
+                show.get("description", "")):
+                
+                # Mark as channel VOD content with offset info
+                show["_isChannelVOD"] = True
+                show["_channelId"] = channel_id
+                show["_vodType"] = "catchup"
+                show["_offsetDays"] = offset_days
+                
+                vod_content.append(show)
+        
+        # Sort by start time in descending order (most recent first)
+        vod_content.sort(key=lambda x: x.get("startEpoch", 0), reverse=True)
+        
+        if vod_content:
+            Script.log(f"Found {len(vod_content)} VOD items for channel {channel_id} (offset: {offset_days} days)", lvl=Script.INFO)
+            return vod_content
+        else:
+            Script.log(f"No VOD content found for channel {channel_id} (offset: {offset_days} days)", lvl=Script.INFO)
+            return []
+            
+    except Exception as e:
+        Script.log(f"Failed to get channel VOD content: {e}", lvl=Script.ERROR)
+        return []
 
 
 def cleanLocalCache():
