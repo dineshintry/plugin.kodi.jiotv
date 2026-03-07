@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 from codequick import run
 
 # Import modules to register routes
-from resources.lib.recorder import record_live_stream, download_vod as _recorder_download_vod
+from resources.lib.recorder import record_live_stream, download_vod as _recorder_download_vod, download_vod_fast as _recorder_download_vod_fast, download_vod_superfast as _recorder_download_vod_superfast
 from resources.lib.vod import (
     show_featured,
     show_vod,
@@ -63,6 +63,16 @@ def setmobile(*args, **kwargs):
 def download_vod(*args, **kwargs):
     from resources.lib.recorder import download_vod as _download_vod
     return _download_vod(*args, **kwargs)
+
+@Script.register
+def download_vod_fast(*args, **kwargs):
+    from resources.lib.recorder import download_vod_fast as _download_vod_fast
+    return _download_vod_fast(*args, **kwargs)
+
+@Script.register
+def download_vod_superfast(*args, **kwargs):
+    from resources.lib.recorder import download_vod_superfast as _download_vod_superfast
+    return _download_vod_superfast(*args, **kwargs)
 
 if __name__ == "__main__":
     run()

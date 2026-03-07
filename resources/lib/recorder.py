@@ -2,12 +2,14 @@
 from __future__ import unicode_literals
 
 import os
+import re
+import shutil
 import subprocess
 import threading
 import time
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.parse import urlencode, urljoin, urlparse, parse_qs, urlunparse
 from uuid import uuid4
 
@@ -58,6 +60,140 @@ from resources.lib.utils import (
     getVODChannels,
     getChannelVODContent,
 )
+
+# Global download state tracker
+_download_active = False
+_download_lock = threading.Lock()
+_download_title = ""
+
+
+def _parse_vod_duration_seconds(begin, end):
+    """Parse begin/end timestamps (e.g. '20260301T040000') and return duration in seconds."""
+    try:
+        fmt = "%Y%m%dT%H%M%S"
+        dt_begin = datetime.strptime(str(begin), fmt)
+        dt_end = datetime.strptime(str(end), fmt)
+        return max(int((dt_end - dt_begin).total_seconds()), 60)  # at least 60s
+    except Exception:
+        return 3600  # default 1 hour if parsing fails
+
+
+def _parse_ffmpeg_time(line):
+    """Extract current time in seconds from an ffmpeg stderr line like 'time=01:23:45.67'."""
+    match = re.search(r'time=(\d+):(\d+):(\d+\.?\d*)', line)
+    if match:
+        h, m, s = int(match.group(1)), int(match.group(2)), float(match.group(3))
+        return h * 3600 + m * 60 + s
+    return None
+
+
+# Token expires after 120 seconds; at ~5x download speed, 5 min of video takes ~60s
+CHUNK_DURATION_SECONDS = 300  # 5-minute chunks, safe margin within 120s token
+
+
+def _calculate_chunks(begin_str, end_str, chunk_seconds=CHUNK_DURATION_SECONDS):
+    """Split a time range into chunks for token-refresh download."""
+    try:
+        fmt = "%Y%m%dT%H%M%S"
+        dt_begin = datetime.strptime(str(begin_str), fmt)
+        dt_end = datetime.strptime(str(end_str), fmt)
+        chunks = []
+        current = dt_begin
+        while current < dt_end:
+            chunk_end = min(current + timedelta(seconds=chunk_seconds), dt_end)
+            chunks.append((current.strftime(fmt), chunk_end.strftime(fmt)))
+            current = chunk_end
+        return chunks
+    except Exception as e:
+        Script.log(f"[DOWNLOAD] Error calculating chunks: {e}", lvl=Script.ERROR)
+        return [(str(begin_str), str(end_str))]  # fallback: single chunk
+
+
+def _inhibit_power_saving(enable):
+    """Prevent or allow system sleep during download."""
+    try:
+        if enable:
+            xbmc.executebuiltin('InhibitIdleShutdown(true)')
+            # Windows: prevent system sleep via SetThreadExecutionState
+            try:
+                import ctypes
+                ES_CONTINUOUS = 0x80000000
+                ES_SYSTEM_REQUIRED = 0x00000001
+                ctypes.windll.kernel32.SetThreadExecutionState(
+                    ES_CONTINUOUS | ES_SYSTEM_REQUIRED)
+            except Exception:
+                pass
+        else:
+            xbmc.executebuiltin('InhibitIdleShutdown(false)')
+            try:
+                import ctypes
+                ctypes.windll.kernel32.SetThreadExecutionState(0x80000000)
+            except Exception:
+                pass
+        Script.log(f"[DOWNLOAD] Power saving {'inhibited' if enable else 'restored'}", lvl=Script.INFO)
+    except Exception as e:
+        Script.log(f"[DOWNLOAD] Power saving control error: {e}", lvl=Script.WARNING)
+
+
+def _build_ffmpeg_cmd(stream_url, output_file, channel_id, showtime, srno, headers):
+    """Build an ffmpeg command with proper auth headers matching InputStream.Adaptive."""
+    safe_output = output_file.replace('\\', '/')
+    cmd = ['ffmpeg', '-y']
+
+    # Extract __hdnea__ cookie from URL
+    hdnea_cookie = ""
+    if '__hdnea__' in stream_url:
+        try:
+            url_parsed = urlparse(stream_url)
+            url_qs = parse_qs(url_parsed.query)
+            if '__hdnea__' in url_qs:
+                hdnea_cookie = "__hdnea__=" + url_qs['__hdnea__'][0]
+        except Exception:
+            hdnea_cookie = "__hdnea__" + stream_url.split("__hdnea__")[-1].split("&")[0]
+
+    # Build headers matching what player.py passes to InputStream.Adaptive
+    api_headers = getHeaders()
+    if api_headers:
+        api_headers["channelid"] = str(channel_id)
+        if showtime and srno:
+            api_headers["srno"] = str(srno)
+            api_headers["showtime"] = str(showtime)
+        api_headers["cookie"] = hdnea_cookie or headers.get("cookie", "")
+        api_headers.setdefault("user-agent", "jiotv")
+    else:
+        api_headers = headers
+
+    ffmpeg_headers = ""
+    for hk, hv in api_headers.items():
+        if hv and isinstance(hv, str):
+            ffmpeg_headers += f"{hk}: {hv}\r\n"
+
+    if ffmpeg_headers:
+        cmd.extend(['-headers', ffmpeg_headers])
+
+    cmd.extend(['-i', stream_url, '-c', 'copy', '-bsf:a', 'aac_adtstoasc', safe_output])
+    return cmd
+
+
+def _run_ffmpeg_chunk(cmd, output_file, timeout=180):
+    """Run ffmpeg for a single chunk. Returns True on success."""
+    try:
+        process = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        stdout, stderr = process.communicate(timeout=timeout)
+        if process.returncode == 0 and os.path.exists(output_file) and os.path.getsize(output_file) > 0:
+            return True
+        else:
+            Script.log(f"[DOWNLOAD] Chunk failed (code {process.returncode}): {stderr[-300:] if stderr else 'no stderr'}", lvl=Script.ERROR)
+            return False
+    except subprocess.TimeoutExpired:
+        process.kill()
+        Script.log("[DOWNLOAD] Chunk timed out", lvl=Script.ERROR)
+        return False
+    except Exception as e:
+        Script.log(f"[DOWNLOAD] Chunk error: {e}", lvl=Script.ERROR)
+        return False
+
 
 def resolve_and_merge_query(base_url, relative_url):
     """
@@ -1250,19 +1386,29 @@ def record_live_stream(plugin, channel_id, channel_name="Unknown Channel"):
 @Script.register
 def download_vod(plugin, *args, **kwargs):
     """
-    Download VOD content.
+    Download VOD content with real-time progress UI.
     """
+    global _download_active, _download_title
+
     try:
+        # Check if another download is already running
+        with _download_lock:
+            if _download_active:
+                Script.notify("Download Busy", f"Already downloading: {_download_title}. Please wait.")
+                Dialog().ok("Download In Progress",
+                            f"A download is already running:\n[B]{_download_title}[/B]\n\n"
+                            "Please wait for it to finish before starting another download.\n"
+                            "Do NOT play any streams while downloading.")
+                return
+
         # Debug: Log all received parameters
         Script.log(f"[RECORDING] download_vod called with args: {args} (len: {len(args)}), kwargs: {kwargs}", lvl=Script.INFO)
 
         # Handle different parameter formats
         if len(args) >= 7:
-            # Parameters passed as positional args
             channel_id, showtime, srno, programId, begin, end = args[:6]
             title = args[6] if len(args) > 6 else kwargs.get('title', "VOD Content")
         elif kwargs:
-            # Parameters passed as keyword args
             channel_id = kwargs.get('channel_id', '')
             showtime = kwargs.get('showtime', '')
             srno = kwargs.get('srno', '')
@@ -1277,7 +1423,7 @@ def download_vod(plugin, *args, **kwargs):
 
         Script.log(f"[RECORDING] Extracted parameters: channel_id={channel_id}, showtime={showtime}, srno={srno}, programId={programId}, begin={begin}, end={end}, title={title}", lvl=Script.INFO)
 
-        # Convert parameters to strings for consistency
+        # Convert parameters to strings
         channel_id = str(channel_id)
         showtime = str(showtime) if showtime else ""
         srno = str(srno) if srno else ""
@@ -1288,143 +1434,260 @@ def download_vod(plugin, *args, **kwargs):
 
         Script.log(f"[RECORDING] After conversion: channel_id={channel_id}, showtime={showtime}, srno={srno}", lvl=Script.INFO)
 
-        # Check if ffmpeg is available, install if necessary
+        # Check if ffmpeg is available
         if not ensure_ffmpeg_available():
             Script.notify("Download Failed", "ffmpeg is required but could not be installed")
             return
 
-        # Generate default filename: VOD_program_name_date_time
+        # Generate default filename
         safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).rstrip()
         default_filename = f"VOD_{safe_title.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp4"
-        
-        # Get output filename from user, with default suggestion
+
         filename = keyboard("Enter filename (or leave empty for auto-generated)", default=default_filename)
         if not filename or filename.strip() == "":
             filename = default_filename
         elif not filename.endswith('.mp4'):
             filename += '.mp4'
 
-        # Get save location
         save_path = xbmcvfs.translatePath("special://home/userdata/addon_data/plugin.kodi.jiotv/downloads/")
         if not xbmcvfs.exists(save_path):
             xbmcvfs.mkdirs(save_path)
 
         output_path = os.path.join(save_path, filename)
 
-        # Start download in background
-        Script.notify("Download", f"Starting download: {title}")
+        # Calculate total duration for progress tracking
+        total_duration = _parse_vod_duration_seconds(begin, end)
+        Script.log(f"[DOWNLOAD] Estimated duration: {total_duration}s ({total_duration // 60} min)", lvl=Script.INFO)
+
+        # Warn user not to stream while downloading
+        Dialog().ok("Download Starting",
+                    f"Downloading: [B]{title}[/B]\n\n"
+                    "[COLOR red]WARNING:[/COLOR] Do NOT play any live/VOD streams while\n"
+                    "the download is in progress. Streaming will interrupt\n"
+                    "the download and cause it to fail.\n\n"
+                    "Progress will be shown in the top-right corner.")
 
         def do_download():
-            # APPROACH 1: ffmpeg direct download (best approach for encrypted HLS)
-            # Get a FRESH stream URL token and pass everything to ffmpeg immediately
-            # ffmpeg handles key download, segment download, and muxing internally
-            Script.log("[DOWNLOAD] === Trying ffmpeg direct download (primary method) ===", lvl=Script.INFO)
-            
+            global _download_active, _download_title
+            progress_bg = None
+            temp_dir = None
+
             try:
-                # Get a fresh stream URL with a new 120-second token
-                Script.log("[DOWNLOAD] Getting fresh stream URL for ffmpeg...", lvl=Script.INFO)
-                stream_url, headers = get_stream_url_for_recording(channel_id, showtime, srno, programId, begin, end)
-                
-                if not stream_url:
-                    Script.log("[DOWNLOAD] Could not get stream URL", lvl=Script.ERROR)
-                    Script.notify("Download Failed", "Could not get stream URL")
-                    return
+                # Mark download as active
+                with _download_lock:
+                    _download_active = True
+                    _download_title = title
 
-                Script.log(f"[DOWNLOAD] Got stream URL, starting ffmpeg immediately...", lvl=Script.INFO)
+                # Inhibit power saving / system sleep
+                _inhibit_power_saving(True)
 
-                # Build ffmpeg command with auth headers matching Kodi's InputStream.Adaptive
-                # During playback, InputStream.Adaptive uses getHeaders() for stream_headers/manifest_headers
-                # which includes ssotoken, authtoken, channelid, srno, showtime, etc.
-                # The key server at tv.media.jio.com validates these JioTV API headers
+                # Create background progress dialog
+                progress_bg = xbmcgui.DialogProgressBG()
+                progress_bg.create("JioTV Download", f"Starting: {title}")
+                progress_bg.update(0, "JioTV Download", f"Preparing: {title}")
+
                 safe_output = output_path.replace('\\', '/')
-                
-                cmd = ['ffmpeg', '-y']
-                
-                # Extract the __hdnea__ cookie from the URL
-                hdnea_cookie = ""
-                if '__hdnea__' in stream_url:
-                    try:
-                        from urllib.parse import urlparse, parse_qs
-                        url_parsed = urlparse(stream_url)
-                        url_qs = parse_qs(url_parsed.query)
-                        if '__hdnea__' in url_qs:
-                            hdnea_cookie = "__hdnea__=" + url_qs['__hdnea__'][0]
-                    except Exception:
-                        hdnea_cookie = "__hdnea__" + stream_url.split("__hdnea__")[-1].split("&")[0]
+                start_time = time.time()
 
-                # Build headers matching what player.py passes to InputStream.Adaptive
-                # player.py lines 56-67, 180, 321: uses getHeaders() + cookie
-                api_headers = getHeaders()
-                if api_headers:
-                    api_headers["channelid"] = str(channel_id)
-                    if showtime and srno:
-                        api_headers["srno"] = str(srno)
-                        api_headers["showtime"] = str(showtime)
-                    api_headers["cookie"] = hdnea_cookie or headers.get("cookie", "")
-                    api_headers.setdefault("user-agent", "jiotv")
-                else:
-                    api_headers = headers
+                if total_duration > 600:
+                    # ============================================================
+                    # CHUNKED DOWNLOAD — for VODs longer than 10 minutes
+                    # Token expires after 120s, so we split into 5-min chunks,
+                    # getting a fresh token for each chunk.
+                    # ============================================================
+                    chunks = _calculate_chunks(begin, end, CHUNK_DURATION_SECONDS)
+                    total_chunks = len(chunks)
+                    Script.log(f"[DOWNLOAD] Chunked download: {total_chunks} chunks of {CHUNK_DURATION_SECONDS}s for {total_duration}s total", lvl=Script.INFO)
 
-                # ffmpeg -headers format: each header on its own line terminated by \r\n
-                ffmpeg_headers = ""
-                for hk, hv in api_headers.items():
-                    if hv and isinstance(hv, str):
-                        ffmpeg_headers += f"{hk}: {hv}\r\n"
-                
-                if ffmpeg_headers:
-                    cmd.extend(['-headers', ffmpeg_headers])
-                
-                cmd.extend([
-                    '-i', stream_url,  # Use the master M3U8 URL directly
-                    '-c', 'copy',
-                    '-bsf:a', 'aac_adtstoasc',
-                    safe_output
-                ])
-                
-                Script.log(f"[DOWNLOAD] ffmpeg command (url truncated): ffmpeg -y -headers [auth headers] -i [stream_url] -c copy -bsf:a aac_adtstoasc {safe_output}", lvl=Script.INFO)
-                
-                process = subprocess.Popen(
-                    cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    universal_newlines=True,
-                )
-                
-                # Monitor with timeout - VOD streams can be long
-                stdout, stderr = process.communicate(timeout=1800)  # 30 min timeout
-                
-                if process.returncode == 0 and os.path.exists(output_path) and os.path.getsize(output_path) > 0:
-                    file_size_mb = os.path.getsize(output_path) / (1024 * 1024)
-                    Script.log(f"[DOWNLOAD] ffmpeg direct download SUCCESS: {output_path} ({file_size_mb:.1f} MB)", lvl=Script.INFO)
-                    Script.notify("Download Complete", f"Saved: {output_path} ({file_size_mb:.1f} MB)")
-                    return
+                    # Create temp directory for chunks
+                    temp_dir = os.path.join(save_path, f"_temp_{int(time.time())}")
+                    os.makedirs(temp_dir, exist_ok=True)
+
+                    chunk_files = []
+                    failed_chunks = 0
+
+                    for i, (chunk_begin, chunk_end) in enumerate(chunks):
+                        chunk_pct = int((i / total_chunks) * 95)  # 0-95% for chunks
+                        progress_bg.update(chunk_pct, "JioTV Download",
+                                           f"{title} \u2014 Part {i+1}/{total_chunks} ({chunk_pct}%)")
+
+                        Script.log(f"[DOWNLOAD] Chunk {i+1}/{total_chunks}: {chunk_begin} to {chunk_end}", lvl=Script.INFO)
+
+                        # Get a FRESH stream URL with new token for this chunk's time range
+                        stream_url, headers = get_stream_url_for_recording(
+                            channel_id, showtime, srno, programId, chunk_begin, chunk_end)
+
+                        if not stream_url:
+                            Script.log(f"[DOWNLOAD] No URL for chunk {i+1}, skipping", lvl=Script.WARNING)
+                            failed_chunks += 1
+                            continue
+
+                        chunk_file = os.path.join(temp_dir, f"chunk_{i:04d}.mp4")
+                        cmd = _build_ffmpeg_cmd(stream_url, chunk_file, channel_id, showtime, srno, headers)
+
+                        success = _run_ffmpeg_chunk(cmd, chunk_file, timeout=180)
+                        if success:
+                            chunk_size_mb = os.path.getsize(chunk_file) / (1024 * 1024)
+                            chunk_files.append(chunk_file)
+                            Script.log(f"[DOWNLOAD] Chunk {i+1}/{total_chunks} OK ({chunk_size_mb:.1f} MB)", lvl=Script.INFO)
+                        else:
+                            Script.log(f"[DOWNLOAD] Chunk {i+1}/{total_chunks} FAILED", lvl=Script.WARNING)
+                            failed_chunks += 1
+                            # Retry once with a fresh token
+                            time.sleep(1)
+                            stream_url2, headers2 = get_stream_url_for_recording(
+                                channel_id, showtime, srno, programId, chunk_begin, chunk_end)
+                            if stream_url2:
+                                cmd2 = _build_ffmpeg_cmd(stream_url2, chunk_file, channel_id, showtime, srno, headers2)
+                                if _run_ffmpeg_chunk(cmd2, chunk_file, timeout=180):
+                                    chunk_files.append(chunk_file)
+                                    failed_chunks -= 1
+                                    Script.log(f"[DOWNLOAD] Chunk {i+1} retry SUCCESS", lvl=Script.INFO)
+
+                    # Concatenate all chunks
+                    if chunk_files:
+                        progress_bg.update(96, "JioTV Download", f"Merging {len(chunk_files)} parts...")
+                        Script.log(f"[DOWNLOAD] Concatenating {len(chunk_files)} chunks ({failed_chunks} failed)", lvl=Script.INFO)
+
+                        # Write ffmpeg concat file list
+                        concat_list = os.path.join(temp_dir, "concat.txt")
+                        with open(concat_list, 'w') as f:
+                            for cf in chunk_files:
+                                f.write(f"file '{cf.replace(os.sep, '/')}'"
+                                        "\n")
+
+                        concat_cmd = [
+                            'ffmpeg', '-y', '-f', 'concat', '-safe', '0',
+                            '-i', concat_list, '-c', 'copy', safe_output
+                        ]
+                        concat_proc = subprocess.Popen(
+                            concat_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+                        concat_proc.communicate(timeout=600)
+
+                        if concat_proc.returncode == 0 and os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+                            file_size_mb = os.path.getsize(output_path) / (1024 * 1024)
+                            elapsed_min = (time.time() - start_time) / 60
+                            Script.log(f"[DOWNLOAD] Chunked download SUCCESS: {output_path} ({file_size_mb:.1f} MB in {elapsed_min:.1f} min, {failed_chunks} chunk failures)", lvl=Script.INFO)
+                            progress_bg.update(100, "JioTV Download", f"Complete: {title} ({file_size_mb:.0f} MB)")
+                            time.sleep(3)
+                            progress_bg.close()
+                            progress_bg = None
+                            Script.notify("Download Complete", f"{title} ({file_size_mb:.1f} MB)")
+                            # Cleanup temp
+                            shutil.rmtree(temp_dir, ignore_errors=True)
+                            temp_dir = None
+                            return
+                        else:
+                            Script.log(f"[DOWNLOAD] Concat failed (code {concat_proc.returncode})", lvl=Script.ERROR)
+                    else:
+                        Script.log("[DOWNLOAD] No chunks downloaded successfully", lvl=Script.ERROR)
+
+                    # Cleanup temp on failure (keep for debugging)
+                    Script.log(f"[DOWNLOAD] Temp chunks kept at: {temp_dir}", lvl=Script.INFO)
+                    progress_bg.update(0, "JioTV Download", f"Download failed: {title}")
+                    time.sleep(3)
+                    progress_bg.close()
+                    progress_bg = None
+                    Script.notify("Download Failed", f"{len(chunk_files)}/{total_chunks} chunks saved in temp folder.")
+
                 else:
-                    Script.log(f"[DOWNLOAD] ffmpeg direct download failed (code {process.returncode})", lvl=Script.ERROR)
-                    if stderr:
-                        Script.log(f"[DOWNLOAD] ffmpeg stderr: {stderr[-500:]}", lvl=Script.ERROR)
-                    
-            except subprocess.TimeoutExpired:
-                process.kill()
-                Script.log("[DOWNLOAD] ffmpeg direct download timed out after 30 min", lvl=Script.ERROR)
-            except Exception as e:
-                Script.log(f"[DOWNLOAD] ffmpeg direct download error: {e}", lvl=Script.ERROR)
-            
-            # APPROACH 2: Segment-based download (fallback)
-            # Downloads encrypted segments and saves them for manual processing
-            Script.log("[DOWNLOAD] === Trying segment-based download (fallback method) ===", lvl=Script.INFO)
-            try:
-                # Get another fresh stream URL
-                stream_url2, headers2 = get_stream_url_for_recording(channel_id, showtime, srno, programId, begin, end)
-                if stream_url2:
-                    success = multi_threaded_download(stream_url2, output_path, headers2)
-                    if success:
-                        Script.log(f"[DOWNLOAD] VOD saved to: {output_path}", lvl=Script.INFO)
-                        Script.notify("Download Complete", f"Saved to: {output_path}")
+                    # ============================================================
+                    # DIRECT DOWNLOAD — for short VODs (≤ 10 minutes)
+                    # Single ffmpeg pass fits within the 120s token window.
+                    # ============================================================
+                    Script.log("[DOWNLOAD] === Direct download (short VOD) ===", lvl=Script.INFO)
+
+                    stream_url, headers = get_stream_url_for_recording(channel_id, showtime, srno, programId, begin, end)
+                    if not stream_url:
+                        Script.log("[DOWNLOAD] Could not get stream URL", lvl=Script.ERROR)
+                        progress_bg.update(0, "JioTV Download", "Failed: Could not get stream URL")
+                        time.sleep(3)
+                        progress_bg.close()
+                        progress_bg = None
+                        Script.notify("Download Failed", "Could not get stream URL")
                         return
+
+                    progress_bg.update(2, "JioTV Download", f"Downloading: {title}")
+                    cmd = _build_ffmpeg_cmd(stream_url, output_path, channel_id, showtime, srno, headers)
+                    Script.log(f"[DOWNLOAD] ffmpeg direct: {safe_output}", lvl=Script.INFO)
+
+                    process = subprocess.Popen(
+                        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+
+                    # Real-time progress tracking via ffmpeg stderr
+                    progress_bg.update(3, "JioTV Download", f"Downloading: {title}")
+                    last_update = 0
+                    stderr_lines = []
+                    last_progress_pct = 0
+                    stderr_buffer = ""
+
+                    while True:
+                        char = process.stderr.read(1)
+                        if not char:
+                            break
+                        if char == '\r' or char == '\n':
+                            line = stderr_buffer.strip()
+                            if line:
+                                stderr_lines.append(line)
+                                current_time = _parse_ffmpeg_time(line)
+                                if current_time is not None and total_duration > 0:
+                                    pct = min(int((current_time / total_duration) * 100), 99)
+                                    if pct != last_progress_pct or (time.time() - last_update) > 2:
+                                        last_progress_pct = pct
+                                        last_update = time.time()
+                                        elapsed = time.time() - start_time
+                                        if pct > 0:
+                                            eta_s = int(elapsed / pct * (100 - pct))
+                                            eta_str = f"{eta_s // 60}m {eta_s % 60}s left"
+                                        else:
+                                            eta_str = "calculating..."
+                                        size_str = ""
+                                        if os.path.exists(output_path):
+                                            size_str = f" ({os.path.getsize(output_path) / (1024*1024):.0f} MB)"
+                                        progress_bg.update(pct, "JioTV Download",
+                                                           f"{title} \u2014 {pct}%{size_str} \u2014 {eta_str}")
+                            stderr_buffer = ""
+                        else:
+                            stderr_buffer += char
+
+                    process.wait()
+
+                    if process.returncode == 0 and os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+                        file_size_mb = os.path.getsize(output_path) / (1024 * 1024)
+                        elapsed_min = (time.time() - start_time) / 60
+                        Script.log(f"[DOWNLOAD] Direct download SUCCESS: {output_path} ({file_size_mb:.1f} MB in {elapsed_min:.1f} min)", lvl=Script.INFO)
+                        progress_bg.update(100, "JioTV Download", f"Complete: {title} ({file_size_mb:.0f} MB)")
+                        time.sleep(3)
+                        progress_bg.close()
+                        progress_bg = None
+                        Script.notify("Download Complete", f"{title} ({file_size_mb:.1f} MB)")
+                        return
+                    else:
+                        Script.log(f"[DOWNLOAD] Direct download failed (code {process.returncode})", lvl=Script.ERROR)
+                        full_stderr = "\n".join(stderr_lines[-10:])
+                        if full_stderr:
+                            Script.log(f"[DOWNLOAD] ffmpeg stderr: {full_stderr[-500:]}", lvl=Script.ERROR)
+
+                    progress_bg.update(0, "JioTV Download", f"Download failed: {title}")
+                    time.sleep(3)
+                    progress_bg.close()
+                    progress_bg = None
+                    Script.notify("Download Failed", "Check logs for details.")
+
             except Exception as e:
-                Script.log(f"[DOWNLOAD] Segment download fallback error: {e}", lvl=Script.ERROR)
-            
-            Script.notify("Download Failed", "Check logs for details. Segments may be saved for manual processing.")
+                Script.log(f"[DOWNLOAD] Download error: {e}", lvl=Script.ERROR)
+                if progress_bg:
+                    try:
+                        progress_bg.close()
+                    except Exception:
+                        pass
+                Script.notify("Download Failed", str(e)[:50])
+            finally:
+                # Always restore state
+                _inhibit_power_saving(False)
+                with _download_lock:
+                    _download_active = False
+                    _download_title = ""
 
         download_thread = threading.Thread(target=do_download)
         download_thread.daemon = True
@@ -1434,3 +1697,278 @@ def download_vod(plugin, *args, **kwargs):
         Script.log(f"[RECORDING] Error in download_vod: {e}", lvl=Script.ERROR)
         Script.notify("Download Failed", str(e))
 
+
+# Number of parallel workers for each download mode
+FAST_WORKERS = 3
+SUPERFAST_WORKERS = 6
+
+
+def _download_one_chunk(args):
+    """Worker function for parallel chunk download. Returns (index, chunk_file, success)."""
+    i, chunk_begin, chunk_end, temp_dir, channel_id, showtime, srno, programId = args
+    try:
+        Script.log(f"[PARALLEL-DL] Worker starting chunk {i}: {chunk_begin} \u2192 {chunk_end}", lvl=Script.INFO)
+
+        stream_url, headers = get_stream_url_for_recording(
+            channel_id, showtime, srno, programId, chunk_begin, chunk_end)
+
+        if not stream_url:
+            Script.log(f"[PARALLEL-DL] No stream URL for chunk {i}", lvl=Script.WARNING)
+            return (i, None, False)
+
+        chunk_file = os.path.join(temp_dir, f"chunk_{i:04d}.mp4")
+        cmd = _build_ffmpeg_cmd(stream_url, chunk_file, channel_id, showtime, srno, headers)
+
+        success = _run_ffmpeg_chunk(cmd, chunk_file, timeout=180)
+        if success:
+            size_mb = os.path.getsize(chunk_file) / (1024 * 1024)
+            Script.log(f"[PARALLEL-DL] Chunk {i} OK ({size_mb:.1f} MB)", lvl=Script.INFO)
+            return (i, chunk_file, True)
+        else:
+            # Retry once
+            Script.log(f"[PARALLEL-DL] Chunk {i} failed, retrying...", lvl=Script.WARNING)
+            time.sleep(1)
+            stream_url2, headers2 = get_stream_url_for_recording(
+                channel_id, showtime, srno, programId, chunk_begin, chunk_end)
+            if stream_url2:
+                cmd2 = _build_ffmpeg_cmd(stream_url2, chunk_file, channel_id, showtime, srno, headers2)
+                if _run_ffmpeg_chunk(cmd2, chunk_file, timeout=180):
+                    Script.log(f"[PARALLEL-DL] Chunk {i} retry OK", lvl=Script.INFO)
+                    return (i, chunk_file, True)
+            return (i, None, False)
+    except Exception as e:
+        Script.log(f"[PARALLEL-DL] Chunk {i} exception: {e}", lvl=Script.ERROR)
+        return (i, None, False)
+
+
+def _download_vod_parallel(plugin, num_workers, mode_label, *args, **kwargs):
+    """
+    Shared parallel download logic used by both Fast and Super Fast modes.
+    num_workers: number of concurrent ffmpeg processes
+    mode_label: display label like "Fast" or "Super Fast"
+    """
+    global _download_active, _download_title
+
+    try:
+        # Check if another download is already running
+        with _download_lock:
+            if _download_active:
+                Script.notify("Download Busy", f"Already downloading: {_download_title}. Please wait.")
+                Dialog().ok("Download In Progress",
+                            f"A download is already running:\n[B]{_download_title}[/B]\n\n"
+                            "Please wait for it to finish before starting another download.\n"
+                            "Do NOT play any streams while downloading.")
+                return
+
+        log_tag = f"[{mode_label.upper()}-DL]"
+        Script.log(f"{log_tag} called with {num_workers} workers, kwargs: {kwargs}", lvl=Script.INFO)
+
+        # Handle parameter formats
+        if len(args) >= 7:
+            channel_id, showtime, srno, programId, begin, end = args[:6]
+            title = args[6] if len(args) > 6 else kwargs.get('title', "VOD Content")
+        elif kwargs:
+            channel_id = kwargs.get('channel_id', '')
+            showtime = kwargs.get('showtime', '')
+            srno = kwargs.get('srno', '')
+            programId = kwargs.get('programId', '')
+            begin = kwargs.get('begin', '')
+            end = kwargs.get('end', '')
+            title = kwargs.get('title', "VOD Content")
+        else:
+            Script.log(f"{log_tag} No valid parameters received", lvl=Script.ERROR)
+            Script.notify("Download Failed", "Invalid parameters")
+            return
+
+        # Convert to strings
+        channel_id = str(channel_id)
+        showtime = str(showtime) if showtime else ""
+        srno = str(srno) if srno else ""
+        programId = str(programId) if programId else ""
+        begin = str(begin) if begin else ""
+        end = str(end) if end else ""
+        title = str(title) if title else "VOD Content"
+
+        if not ensure_ffmpeg_available():
+            Script.notify("Download Failed", "ffmpeg is required but could not be installed")
+            return
+
+        safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).rstrip()
+        default_filename = f"VOD_{safe_title.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp4"
+
+        filename = keyboard("Enter filename (or leave empty for auto-generated)", default=default_filename)
+        if not filename or filename.strip() == "":
+            filename = default_filename
+        elif not filename.endswith('.mp4'):
+            filename += '.mp4'
+
+        save_path = xbmcvfs.translatePath("special://home/userdata/addon_data/plugin.kodi.jiotv/downloads/")
+        if not xbmcvfs.exists(save_path):
+            xbmcvfs.mkdirs(save_path)
+
+        output_path = os.path.join(save_path, filename)
+
+        total_duration = _parse_vod_duration_seconds(begin, end)
+        Script.log(f"{log_tag} Duration: {total_duration}s ({total_duration // 60} min), workers: {num_workers}", lvl=Script.INFO)
+
+        # Color coding for mode
+        if num_workers >= 6:
+            color = "red"
+        else:
+            color = "green"
+
+        Dialog().ok(f"{mode_label} Download Starting",
+                    f"Downloading: [B]{title}[/B]\n"
+                    f"Mode: [COLOR {color}]{mode_label.upper()}[/COLOR] ({num_workers} parallel streams)\n\n"
+                    "[COLOR red]WARNING:[/COLOR] Do NOT play any live/VOD streams while\n"
+                    "the download is in progress.\n\n"
+                    "Progress will be shown in the top-right corner.")
+
+        progress_title = f"JioTV {mode_label}"
+
+        def do_parallel_download():
+            global _download_active, _download_title
+            progress_bg = None
+            temp_dir = None
+
+            try:
+                with _download_lock:
+                    _download_active = True
+                    _download_title = f"{title} ({mode_label})"
+
+                _inhibit_power_saving(True)
+
+                progress_bg = xbmcgui.DialogProgressBG()
+                progress_bg.create(progress_title, f"Starting: {title}")
+                progress_bg.update(0, progress_title, f"Preparing {num_workers} workers...")
+
+                safe_output = output_path.replace('\\', '/')
+                start_time = time.time()
+
+                chunks = _calculate_chunks(begin, end, CHUNK_DURATION_SECONDS)
+                total_chunks = len(chunks)
+                Script.log(f"{log_tag} {total_chunks} chunks, {num_workers} parallel workers", lvl=Script.INFO)
+
+                temp_dir = os.path.join(save_path, f"_{mode_label.lower().replace(' ', '')}_{int(time.time())}")
+                os.makedirs(temp_dir, exist_ok=True)
+
+                # Prepare worker arguments
+                worker_args = []
+                for i, (chunk_begin, chunk_end) in enumerate(chunks):
+                    worker_args.append((
+                        i, chunk_begin, chunk_end, temp_dir,
+                        channel_id, showtime, srno, programId
+                    ))
+
+                # Download chunks in parallel
+                completed = 0
+                failed = 0
+                results = {}  # index -> chunk_file
+
+                with ThreadPoolExecutor(max_workers=num_workers) as executor:
+                    futures = {executor.submit(_download_one_chunk, arg): arg[0]
+                               for arg in worker_args}
+
+                    for future in concurrent.futures.as_completed(futures):
+                        idx = futures[future]
+                        try:
+                            chunk_idx, chunk_file, success = future.result()
+                            if success and chunk_file:
+                                results[chunk_idx] = chunk_file
+                                completed += 1
+                            else:
+                                failed += 1
+                        except Exception as e:
+                            Script.log(f"{log_tag} Future error for chunk {idx}: {e}", lvl=Script.ERROR)
+                            failed += 1
+
+                        done_total = completed + failed
+                        pct = int((done_total / total_chunks) * 95)
+                        elapsed = time.time() - start_time
+                        if pct > 0:
+                            eta_s = int(elapsed / pct * (100 - pct))
+                            eta_str = f"{eta_s // 60}m {eta_s % 60}s left"
+                        else:
+                            eta_str = "starting..."
+
+                        progress_bg.update(pct, progress_title,
+                                           f"{title} \u2014 {completed}/{total_chunks} done ({pct}%) \u2014 {eta_str}")
+
+                Script.log(f"{log_tag} All workers done: {completed} OK, {failed} failed", lvl=Script.INFO)
+
+                # Concatenate in order
+                if completed > 0:
+                    progress_bg.update(96, progress_title, f"Merging {completed} parts...")
+
+                    ordered_files = [results[i] for i in sorted(results.keys())]
+
+                    concat_list = os.path.join(temp_dir, "concat.txt")
+                    with open(concat_list, 'w') as f:
+                        for cf in ordered_files:
+                            f.write(f"file '{cf.replace(os.sep, '/')}'"
+                                    "\n")
+
+                    concat_cmd = [
+                        'ffmpeg', '-y', '-f', 'concat', '-safe', '0',
+                        '-i', concat_list, '-c', 'copy', safe_output
+                    ]
+                    concat_proc = subprocess.Popen(
+                        concat_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+                    concat_proc.communicate(timeout=600)
+
+                    if concat_proc.returncode == 0 and os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+                        file_size_mb = os.path.getsize(output_path) / (1024 * 1024)
+                        elapsed_min = (time.time() - start_time) / 60
+                        Script.log(f"{log_tag} SUCCESS: {output_path} ({file_size_mb:.1f} MB in {elapsed_min:.1f} min)", lvl=Script.INFO)
+                        progress_bg.update(100, progress_title, f"Complete: {title} ({file_size_mb:.0f} MB)")
+                        time.sleep(3)
+                        progress_bg.close()
+                        progress_bg = None
+                        Script.notify("Download Complete", f"{title} ({file_size_mb:.1f} MB in {elapsed_min:.0f} min)")
+                        shutil.rmtree(temp_dir, ignore_errors=True)
+                        temp_dir = None
+                        return
+                    else:
+                        Script.log(f"{log_tag} Concat failed (code {concat_proc.returncode})", lvl=Script.ERROR)
+                else:
+                    Script.log(f"{log_tag} No chunks downloaded", lvl=Script.ERROR)
+
+                progress_bg.update(0, progress_title, f"{mode_label} download failed")
+                time.sleep(3)
+                progress_bg.close()
+                progress_bg = None
+                Script.notify(f"{mode_label} Download Failed", "Try 'Download VOD' (normal) instead.")
+
+            except Exception as e:
+                Script.log(f"{log_tag} Error: {e}", lvl=Script.ERROR)
+                if progress_bg:
+                    try:
+                        progress_bg.close()
+                    except Exception:
+                        pass
+                Script.notify(f"{mode_label} Download Failed", f"Try normal download. Error: {str(e)[:40]}")
+            finally:
+                _inhibit_power_saving(False)
+                with _download_lock:
+                    _download_active = False
+                    _download_title = ""
+
+        download_thread = threading.Thread(target=do_parallel_download)
+        download_thread.daemon = True
+        download_thread.start()
+
+    except Exception as e:
+        Script.log(f"{log_tag} Error in parallel download: {e}", lvl=Script.ERROR)
+        Script.notify("Download Failed", str(e))
+
+
+@Script.register
+def download_vod_fast(plugin, *args, **kwargs):
+    """Download VOD with 3 parallel workers (Fast mode)."""
+    return _download_vod_parallel(plugin, FAST_WORKERS, "Fast", *args, **kwargs)
+
+
+@Script.register
+def download_vod_superfast(plugin, *args, **kwargs):
+    """Download VOD with 6 parallel workers (Super Fast mode)."""
+    return _download_vod_parallel(plugin, SUPERFAST_WORKERS, "Super Fast", *args, **kwargs)

@@ -415,11 +415,14 @@ def show_vod_channel_content(plugin, channel_id, offset_days=None):
                 "end": info_dict['params']['end'],
                 "title": item.get("showname", "VOD Content")
             }
-            # Standard Kodi context menu item: (label, action)
-            # action = RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/download_vod/?...)
+            # Standard Kodi context menu items: (label, action)
             from urllib.parse import urlencode
             action = f"RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/download_vod/?{urlencode(params)})"
+            action_fast = f"RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/download_vod_fast/?{urlencode(params)})"
+            action_superfast = f"RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/download_vod_superfast/?{urlencode(params)})"
             vod_item.context.append(("Download VOD", action))
+            vod_item.context.append(("Download VOD (Fast)", action_fast))
+            vod_item.context.append(("Download VOD (Super Fast)", action_superfast))
 
             yield vod_item
     
