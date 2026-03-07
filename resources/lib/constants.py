@@ -11,7 +11,7 @@ ADDON_ID = 'plugin.kodi.jiotv'
 IMG_PUBLIC = "https://jioimages.cdn.jio.com/imagespublic/"
 IMG_CATCHUP = "https://jiotv.catchup.cdn.jio.com/dare_images/images/"
 IMG_CATCHUP_SHOWS = "https://jiotv.catchup.cdn.jio.com/dare_images/shows/"
-PLAY_URL = "plugin://plugin.kodi.jiotv/resources/lib/main/play/?"
+PLAY_URL = "plugin://plugin.kodi.jiotv/resources/lib/player/play/?"
 
 FEATURED_SRC = "https://tv.media.jio.com/apis/v1.4/getdata/featurednew?start=0&limit=30&langId=6"
 
