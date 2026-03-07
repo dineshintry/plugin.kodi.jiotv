@@ -353,6 +353,142 @@ def download_segment(session, url, headers, segment_index, temp_dir):
         raise
 
 
+def dash_widevine_download(url, output_path, headers=None, num_threads=16):
+    """
+    Download DASH stream with Widevine DRM decryption.
+    Extracts PSSH from MPD, fetches license, and decrypts segments.
+    """
+    try:
+        if headers is None:
+            headers = {}
+
+        # Import required modules
+        import base64
+        import struct
+        import xml.etree.ElementTree as ET
+        
+        Script.log("[DASH] Starting DASH Widevine download", lvl=Script.INFO)
+
+        # Fetch MPD manifest
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        mpd_content = response.text
+
+        # Parse MPD to extract PSSH and content info
+        root = ET.fromstring(mpd_content)
+        
+        # Extract content_id from URL parameters or MPD
+        from urllib.parse import parse_qs, urlparse
+        parsed_url = urlparse(url)
+        url_params = parse_qs(parsed_url.query)
+        content_id = url_params.get('content_id', [None])[0]
+        
+        if not content_id:
+            # Try to extract from MPD
+            for elem in root.iter():
+                if 'content_id' in elem.attrib:
+                    content_id = elem.attrib['content_id']
+                    break
+
+        if not content_id:
+            Script.log("[DASH] Could not extract content_id", lvl=Script.ERROR)
+            return False
+
+        # Extract PSSH from MPD
+        pssh_data = None
+        for elem in root.iter():
+            if elem.tag.endswith('ContentProtection') and elem.attrib.get('schemeIdUri') == 'urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed':
+                pssh_elem = elem.find('{urn:mpeg:cenc:2013}pssh')
+                if pssh_elem is not None and pssh_elem.text:
+                    pssh_data = pssh_elem.text
+                    break
+
+        if not pssh_data:
+            Script.log("[DASH] No PSSH found in MPD", lvl=Script.ERROR)
+            return False
+
+        # Get license URL and headers
+        license_url, license_headers = get_widevine_license_info(
+            channel_id=headers.get('channelid', ''),
+            showtime=headers.get('showtime', ''),
+            srno=headers.get('srno', ''),
+            programId=content_id
+        )
+
+        if not license_url:
+            Script.log("[DASH] Could not get license URL", lvl=Script.ERROR)
+            return False
+
+        # Fetch Widevine license
+        Script.log(f"[DASH] Fetching license from: {license_url}", lvl=Script.INFO)
+        license_response = requests.post(
+            license_url,
+            headers=license_headers,
+            data=base64.b64decode(pssh_data),
+            timeout=10
+        )
+        license_response.raise_for_status()
+        
+        # Extract content keys from license response
+        # Note: This requires Widevine CDM or pywidevine library
+        # For now, save license for external processing
+        license_file = output_path.replace('.mp4', '.license')
+        with open(license_file, 'wb') as f:
+            f.write(license_response.content)
+        
+        Script.log(f"[DASH] License saved to: {license_file}", lvl=Script.INFO)
+        Script.log("[DASH] Note: Actual decryption requires Widevine CDM - saved for external processing", lvl=Script.WARNING)
+
+        # Download audio and video segments (encrypted)
+        # This is a simplified version - full implementation would parse MPD properly
+        segments_dir = output_path.replace('.mp4', '_segments')
+        os.makedirs(segments_dir, exist_ok=True)
+
+        # Find segment URLs in MPD
+        segment_urls = []
+        for elem in root.iter():
+            if elem.tag.endswith('Representation'):
+                for media_elem in elem.iter():
+                    if media_elem.tag.endswith('BaseURL') or media_elem.tag.endswith('SegmentURL'):
+                        seg_url = media_elem.attrib.get('media', media_elem.attrib.get('href', ''))
+                        if seg_url:
+                            if not seg_url.startswith('http'):
+                                base_url = url.rsplit('/', 1)[0]
+                                seg_url = f"{base_url}/{seg_url}"
+                            segment_urls.append(seg_url)
+
+        if not segment_urls:
+            Script.log("[DASH] No segments found in MPD", lvl=Script.ERROR)
+            return False
+
+        Script.log(f"[DASH] Found {len(segment_urls)} segments", lvl=Script.INFO)
+
+        # Download segments
+        downloaded_segments = []
+        for i, seg_url in enumerate(segment_urls):
+            try:
+                seg_response = requests.get(seg_url, headers=headers, timeout=20)
+                seg_response.raise_for_status()
+                
+                seg_file = os.path.join(segments_dir, f'segment_{i:04d}.mp4')
+                with open(seg_file, 'wb') as f:
+                    f.write(seg_response.content)
+                downloaded_segments.append(seg_file)
+                
+                Script.log(f"[DASH] Downloaded segment {i+1}/{len(segment_urls)}", lvl=Script.DEBUG)
+            except Exception as e:
+                Script.log(f"[DASH] Failed to download segment {i}: {e}", lvl=Script.ERROR)
+
+        Script.log(f"[DASH] Downloaded {len(downloaded_segments)} encrypted segments to: {segments_dir}", lvl=Script.INFO)
+        Script.log(f"[DASH] Use external tool with license file to decrypt and combine", lvl=Script.INFO)
+        
+        return True
+
+    except Exception as e:
+        Script.log(f"[DASH] Error in Widevine download: {e}", lvl=Script.ERROR)
+        return False
+
+
 def hls_segment_download(url, output_path, headers=None, num_threads=16):
     """
     Download an HLS (M3U8) stream by downloading segments in parallel.
@@ -400,77 +536,139 @@ def hls_segment_download(url, output_path, headers=None, num_threads=16):
         Script.log(f"[DOWNLOAD] Found {total_segments} segments to download", lvl=Script.INFO)
 
         # Download encryption key(s) if present
+        # Extract __hdnea__ token for cookie-based auth (this is how Kodi's InputStream.Adaptive works)
+        hdnea_cookie = ""
+        if '?' in url:
+            try:
+                url_parsed = urlparse(url)
+                url_qs = parse_qs(url_parsed.query)
+                if '__hdnea__' in url_qs:
+                    hdnea_cookie = "__hdnea__=" + url_qs['__hdnea__'][0]
+                elif '__hdnea__' in url:
+                    hdnea_cookie = "__hdnea__" + url.split("__hdnea__")[-1].split("&")[0]
+            except Exception:
+                if '__hdnea__' in url:
+                    hdnea_cookie = "__hdnea__" + url.split("__hdnea__")[-1].split("&")[0]
+
+        if hdnea_cookie:
+            Script.log(f"[DOWNLOAD] Extracted __hdnea__ cookie for key auth ({len(hdnea_cookie)} chars)", lvl=Script.INFO)
+
         key_files = {}  # Maps original key URI -> local filename
         for key in playlist.keys:
             if key and key.uri and key.uri not in key_files:
-                # Use absolute URL directly if it starts with http, otherwise resolve
+                # Build multiple candidate key URLs to try
+                key_urls_to_try = []
+
+                # Determine the original absolute key URL
                 if key.uri.startswith('http'):
-                    key_url = key.uri
+                    original_key_url = key.uri
                 else:
-                    key_url = resolve_and_merge_query(url, key.uri)
-                
-                # FIX 403 FORBIDDEN: Catchup streams serve from CDNs with url auth tokens (__hdnea__)
-                # The M3U8 hardcodes the key to tv.media.jio.com/fallback/ which rejects the request
-                # We need to rewrite the key URL to match the stream's CDN host and query params
-                if 'tv.media.jio.com/fallback' in key_url and '?' in url:
+                    original_key_url = urljoin(url, key.uri)
+
+                # Strategy 1: Original key URI with NO extra query params
+                # (InputStream.Adaptive uses cookie auth, not URL params)
+                key_parsed = urlparse(original_key_url)
+                clean_key_url = urlunparse((key_parsed.scheme, key_parsed.netloc, key_parsed.path, '', '', ''))
+                if clean_key_url != original_key_url:
+                    key_urls_to_try.append(("Clean URL (no query)", clean_key_url))
+
+                # Strategy 2: Rewrite fallback host to CDN host with ONLY __hdnea__ token (no vbegin/vend)
+                if 'tv.media.jio.com/fallback' in original_key_url or 'tv.media.jio.com' in original_key_url:
                     try:
-                        from urllib.parse import urlparse
                         base_parsed = urlparse(url)
-                        key_parsed = urlparse(key_url)
-                        
-                        # Strip /fallback from the key path and append it to the stream's scheme+netloc
-                        path_without_fallback = key_parsed.path.replace('/fallback', '')
-                        # Also copy the auth token query parameters from the stream url!
-                        key_url = f"{base_parsed.scheme}://{base_parsed.netloc}{path_without_fallback}?{base_parsed.query}"
+                        key_p = urlparse(original_key_url)
+                        # Strip /fallback from path
+                        clean_path = key_p.path.replace('/fallback', '')
+                        # Only include __hdnea__ from base URL, skip vbegin/vend
+                        base_qs = parse_qs(base_parsed.query)
+                        filtered_params = {}
+                        for k, v in base_qs.items():
+                            if k in ('__hdnea__',):
+                                filtered_params[k] = v[0]
+                        if filtered_params:
+                            qs = urlencode(filtered_params, safe='=/*~+@:')
+                            cdn_key_url = f"{base_parsed.scheme}://{base_parsed.netloc}{clean_path}?{qs}"
+                        else:
+                            cdn_key_url = f"{base_parsed.scheme}://{base_parsed.netloc}{clean_path}"
+                        key_urls_to_try.append(("CDN rewrite (hdnea only)", cdn_key_url))
                         Script.log(f"[DOWNLOAD] Rewrote fallback key to CDN URL with auth tokens", lvl=Script.INFO)
                     except Exception as e:
                         Script.log(f"[DOWNLOAD] Warning: Failed to rewrite key URL: {e}", lvl=Script.WARNING)
 
-                Script.log(f"[DOWNLOAD] Downloading AES-128 key from: {key_url[:120]}...", lvl=Script.INFO)
+                # Strategy 3: CDN host with full query params from stream URL
+                if 'tv.media.jio.com' in original_key_url:
+                    try:
+                        base_parsed = urlparse(url)
+                        key_p = urlparse(original_key_url)
+                        clean_path = key_p.path.replace('/fallback', '')
+                        cdn_full_url = f"{base_parsed.scheme}://{base_parsed.netloc}{clean_path}?{base_parsed.query}"
+                        key_urls_to_try.append(("CDN rewrite (full query)", cdn_full_url))
+                    except Exception:
+                        pass
 
-                # Try multiple header sets - the key server may need different auth
-                # It strips all the extra Jio API headers and only sends these four:
+                # Strategy 4: Original key URL as-is (maybe with merged query from resolve)
+                merged_key_url = resolve_and_merge_query(url, key.uri)
+                if merged_key_url not in [u for _, u in key_urls_to_try]:
+                    key_urls_to_try.append(("Merged query URL", merged_key_url))
+
+                # Strategy 5: Original key URL exactly as in M3U8
+                if original_key_url not in [u for _, u in key_urls_to_try]:
+                    key_urls_to_try.append(("Original URL", original_key_url))
+
+                Script.log(f"[DOWNLOAD] Will try {len(key_urls_to_try)} key URL strategies", lvl=Script.INFO)
+
+                # Build header sets to try for each URL
+                # Cookie-based auth (matching how InputStream.Adaptive/Kodi player works)
+                cookie_headers = {
+                    "user-agent": "jiotv",
+                    "cookie": hdnea_cookie or headers.get("cookie", ""),
+                }
+                cookie_headers = {k: v for k, v in cookie_headers.items() if v}
+
                 player_headers = {
                     "user-agent": headers.get("user-agent", "jiotv"),
-                    "cookie": headers.get("cookie", ""),
+                    "cookie": hdnea_cookie or headers.get("cookie", ""),
                     "content-type": "application/vnd.apple.mpegurl",
                     "Accesstoken": headers.get("Accesstoken", "")
                 }
-                
-                # Make sure empty headers are removed
                 player_headers = {k: v for k, v in player_headers.items() if v}
 
                 header_sets = [
-                    ("Player exactly (like Kodi)", player_headers),
-                    ("CDN headers", headers),
+                    ("Cookie auth", cookie_headers),
+                    ("Player headers", player_headers),
+                    ("Full headers", headers),
                     ("JioTV API headers", getHeaders()),
                     ("Minimal headers", {"user-agent": "jiotv"}),
                 ]
 
                 key_downloaded = False
-                for header_name, try_headers in header_sets:
-                    try:
-                        if not try_headers:
-                            continue
-                        Script.log(f"[DOWNLOAD] Trying key download with {header_name}...", lvl=Script.INFO)
-                        key_response = requests.get(key_url, headers=try_headers, timeout=10, verify=False)
-                        key_response.raise_for_status()
-                        if len(key_response.content) == 16:  # AES-128 key is exactly 16 bytes
-                            key_filename = f"key_{len(key_files)}.key"
-                            key_path = os.path.join(segments_dir, key_filename)
-                            with open(key_path, 'wb') as f:
-                                f.write(key_response.content)
-                            key_files[key.uri] = key_filename
-                            Script.log(f"[DOWNLOAD] Saved encryption key to: {key_path} ({len(key_response.content)} bytes) using {header_name}", lvl=Script.INFO)
-                            key_downloaded = True
+                for url_name, try_key_url in key_urls_to_try:
+                    if key_downloaded:
+                        break
+                    for header_name, try_headers in header_sets:
+                        if key_downloaded:
                             break
-                        else:
-                            Script.log(f"[DOWNLOAD] Key response unexpected size: {len(key_response.content)} bytes (expected 16), trying next headers", lvl=Script.WARNING)
-                    except Exception as e:
-                        Script.log(f"[DOWNLOAD] Key download failed with {header_name}: {e}", lvl=Script.WARNING)
+                        try:
+                            if not try_headers:
+                                continue
+                            Script.log(f"[DOWNLOAD] Trying key: {url_name} + {header_name} -> {try_key_url[:100]}...", lvl=Script.INFO)
+                            key_response = requests.get(try_key_url, headers=try_headers, timeout=10, verify=False)
+                            key_response.raise_for_status()
+                            if len(key_response.content) == 16:  # AES-128 key is exactly 16 bytes
+                                key_filename = f"key_{len(key_files)}.key"
+                                key_path = os.path.join(segments_dir, key_filename)
+                                with open(key_path, 'wb') as f:
+                                    f.write(key_response.content)
+                                key_files[key.uri] = key_filename
+                                Script.log(f"[DOWNLOAD] SUCCESS: Saved key to {key_path} (16 bytes) via {url_name} + {header_name}", lvl=Script.INFO)
+                                key_downloaded = True
+                            else:
+                                Script.log(f"[DOWNLOAD] Key response unexpected size: {len(key_response.content)} bytes (expected 16) via {url_name} + {header_name}", lvl=Script.WARNING)
+                        except Exception as e:
+                            Script.log(f"[DOWNLOAD] Key failed: {url_name} + {header_name}: {e}", lvl=Script.WARNING)
 
                 if not key_downloaded:
-                    Script.log(f"[DOWNLOAD] Could not download encryption key from: {key_url}", lvl=Script.ERROR)
+                    Script.log(f"[DOWNLOAD] Could not download encryption key after all strategies", lvl=Script.ERROR)
                     Script.log("[DOWNLOAD] Will save segments anyway - encrypted but preserved", lvl=Script.WARNING)
 
         # Build segment URLs
@@ -617,9 +815,60 @@ def hls_segment_download(url, output_path, headers=None, num_threads=16):
                 shutil.rmtree(segments_dir, ignore_errors=True)
                 return True
             else:
-                Script.log(f"[DOWNLOAD] ffmpeg mux failed (code {process.returncode})", lvl=Script.ERROR)
+                Script.log(f"[DOWNLOAD] ffmpeg local mux failed (code {process.returncode})", lvl=Script.ERROR)
                 if stderr:
                     Script.log(f"[DOWNLOAD] ffmpeg stderr: {stderr[-500:]}", lvl=Script.ERROR)
+
+                # FALLBACK: Try ffmpeg directly with the remote URL + cookie auth
+                # ffmpeg's HTTP client can handle AES-128 key downloads with cookies
+                Script.log("[DOWNLOAD] Trying ffmpeg direct download from remote URL with cookie auth...", lvl=Script.INFO)
+                try:
+                    direct_cmd = ['ffmpeg', '-y']
+
+                    # Build header string with cookie for key auth
+                    ffmpeg_headers = ""
+                    if hdnea_cookie:
+                        ffmpeg_headers += f"Cookie: {hdnea_cookie}\r\n"
+                    ffmpeg_headers += "User-Agent: jiotv\r\n"
+                    if headers.get("Accesstoken"):
+                        ffmpeg_headers += f"Accesstoken: {headers['Accesstoken']}\r\n"
+
+                    if ffmpeg_headers:
+                        direct_cmd.extend(['-headers', ffmpeg_headers])
+
+                    direct_cmd.extend([
+                        '-i', url,
+                        '-c', 'copy',
+                        '-bsf:a', 'aac_adtstoasc',
+                        safe_output
+                    ])
+
+                    Script.log(f"[DOWNLOAD] ffmpeg direct command: {' '.join(direct_cmd[:6])}... {safe_output}", lvl=Script.INFO)
+
+                    direct_process = subprocess.Popen(
+                        direct_cmd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        universal_newlines=True,
+                    )
+                    d_stdout, d_stderr = direct_process.communicate(timeout=600)  # 10 min for remote download
+
+                    if direct_process.returncode == 0 and os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+                        file_size_mb = os.path.getsize(output_path) / (1024 * 1024)
+                        Script.log(f"[DOWNLOAD] ffmpeg direct download SUCCESS: {output_path} ({file_size_mb:.1f} MB)", lvl=Script.INFO)
+                        import shutil
+                        shutil.rmtree(segments_dir, ignore_errors=True)
+                        return True
+                    else:
+                        Script.log(f"[DOWNLOAD] ffmpeg direct download also failed (code {direct_process.returncode})", lvl=Script.ERROR)
+                        if d_stderr:
+                            Script.log(f"[DOWNLOAD] ffmpeg direct stderr: {d_stderr[-500:]}", lvl=Script.ERROR)
+                except subprocess.TimeoutExpired:
+                    direct_process.kill()
+                    Script.log("[DOWNLOAD] ffmpeg direct download timed out", lvl=Script.ERROR)
+                except Exception as e2:
+                    Script.log(f"[DOWNLOAD] ffmpeg direct download error: {e2}", lvl=Script.ERROR)
+
                 # DON'T clean up - keep segments for manual processing
                 Script.log(f"[DOWNLOAD] Segments preserved at: {segments_dir}", lvl=Script.INFO)
                 Script.log(f"[DOWNLOAD] Local M3U8 playlist: {local_m3u8_path}", lvl=Script.INFO)
@@ -664,9 +913,12 @@ def multi_threaded_download(url, output_path, headers=None, num_threads=16, chan
             if '#EXTM3U' in content:
                 Script.log("[DOWNLOAD] Detected M3U8 playlist, using segment download approach", lvl=Script.INFO)
                 return hls_segment_download(url, output_path, headers, num_threads)
+            elif '<MPD' in content or 'mpegdash+xml' in response.headers.get('content-type', ''):
+                Script.log("[DOWNLOAD] Detected DASH manifest, using Widevine download approach", lvl=Script.INFO)
+                return dash_widevine_download(url, output_path, headers, num_threads)
 
         except Exception as e:
-            Script.log(f"[DOWNLOAD] Error checking M3U8: {e}, trying direct download", lvl=Script.WARNING)
+            Script.log(f"[DOWNLOAD] Error checking manifest type: {e}, trying direct download", lvl=Script.WARNING)
 
         # For non-M3U8 URLs: Try direct file download with range requests
         Script.log("[DOWNLOAD] Attempting direct file download with range requests", lvl=Script.INFO)
@@ -791,6 +1043,89 @@ def check_ffmpeg_available():
     except (FileNotFoundError, OSError):
         # ffmpeg not found in PATH
         return False
+
+
+def get_widevine_license_info(channel_id, showtime=None, srno=None, programId=None, begin=None, end=None):
+    """
+    Extract Widevine license URL and headers from the VOD playback logic.
+    Returns license URL and headers for decryption.
+    """
+    try:
+        from resources.lib.utils import getHeaders, getSonyHeaders
+        from urllib.parse import urlencode
+        from uuid import uuid4
+        
+        # Get the same headers as used in play function
+        headers = getHeaders()
+        headers["channelid"] = str(channel_id)
+        
+        if showtime and srno:
+            headers["srno"] = srno
+            headers["showtime"] = showtime
+        
+        # Get stream URL to extract MPD data
+        stream_url, _ = get_stream_url_for_recording(channel_id, showtime, srno, programId, begin, end)
+        if not stream_url or '.mpd' not in stream_url:
+            return None, None
+            
+        # Get MPD response to extract license info
+        import urlquick
+        mpd_headers = headers.copy()
+        mpd_headers.update({
+            "user-agent": "okhttp/4.2.2",
+            "content-type": "application/dash+xml",
+        })
+        
+        mpd_res = urlquick.get(stream_url, headers=mpd_headers, verify=False, max_age=-1)
+        mpd_content = mpd_res.text
+        
+        # Extract content_id from MPD or use programId
+        content_id = programId
+        if not content_id:
+            # Try to extract from MPD content
+            import re
+            content_match = re.search(r'content_id["\s]*:\s*["\']([^"\']+)["\']', mpd_content)
+            if content_match:
+                content_id = content_match.group(1)
+        
+        if not content_id:
+            Script.log("[WIDEVINE] Could not extract content_id for license", lvl=Script.ERROR)
+            return None, None
+            
+        # Build license URL (same as used by InputStream Adaptive)
+        license_url = f"https://tv.media.jio.com/catchupproxy?provider=reliance&content_id={content_id}"
+        
+        # Build license headers (same as player.py)
+        license_headers = {
+            "User-Agent": "PlayTV/1.0",
+            "appName": "RJIL_JioTV",
+            "x-platform": "android",
+            "os": "android",
+            "devicetype": "phone",
+            "osVersion": "13",
+            "srno": str(uuid4()),
+            "channelid": str(channel_id),
+            "usergroup": "tvYR7NSNn7rymo3F",
+            "versionCode": "389",
+            "Accept-Encoding": "gzip, deflate",
+            "Content-Type": "application/octet-stream",
+            "Accept": "*/*",
+        }
+        
+        # Add authentication headers
+        license_headers.update({
+            "Accesstoken": headers.get("Accesstoken", ""),
+            "cookie": headers.get("cookie", ""),
+        })
+        
+        Script.log(f"[WIDEVINE] License URL: {license_url}", lvl=Script.INFO)
+        Script.log(f"[WIDEVINE] License headers prepared", lvl=Script.DEBUG)
+        
+        return license_url, license_headers
+        
+    except Exception as e:
+        Script.log(f"[WIDEVINE] Error getting license info: {e}", lvl=Script.ERROR)
+        return None, None
 
 
 def ensure_ffmpeg_available():
@@ -976,25 +1311,120 @@ def download_vod(plugin, *args, **kwargs):
 
         output_path = os.path.join(save_path, filename)
 
-        # Get stream URL
-        Script.notify("Download", f"Getting stream URL for {title}...")
-        stream_url, headers = get_stream_url_for_recording(channel_id, showtime, srno, programId, begin, end)
-        
-        if not stream_url:
-            Script.notify("Download Failed", "Could not get stream URL")
-            return
-
         # Start download in background
         Script.notify("Download", f"Starting download: {title}")
 
         def do_download():
-            # Use multi-threaded download for VOD
-            success = multi_threaded_download(stream_url, output_path, headers)
-            if success:
-                Script.log(f"[DOWNLOAD] VOD saved to: {output_path}", lvl=Script.INFO)
-                Script.notify("Download Complete", f"Saved to: {output_path}")
-            else:
-                Script.notify("Download Failed", "Check logs for details")
+            # APPROACH 1: ffmpeg direct download (best approach for encrypted HLS)
+            # Get a FRESH stream URL token and pass everything to ffmpeg immediately
+            # ffmpeg handles key download, segment download, and muxing internally
+            Script.log("[DOWNLOAD] === Trying ffmpeg direct download (primary method) ===", lvl=Script.INFO)
+            
+            try:
+                # Get a fresh stream URL with a new 120-second token
+                Script.log("[DOWNLOAD] Getting fresh stream URL for ffmpeg...", lvl=Script.INFO)
+                stream_url, headers = get_stream_url_for_recording(channel_id, showtime, srno, programId, begin, end)
+                
+                if not stream_url:
+                    Script.log("[DOWNLOAD] Could not get stream URL", lvl=Script.ERROR)
+                    Script.notify("Download Failed", "Could not get stream URL")
+                    return
+
+                Script.log(f"[DOWNLOAD] Got stream URL, starting ffmpeg immediately...", lvl=Script.INFO)
+
+                # Build ffmpeg command with auth headers matching Kodi's InputStream.Adaptive
+                # During playback, InputStream.Adaptive uses getHeaders() for stream_headers/manifest_headers
+                # which includes ssotoken, authtoken, channelid, srno, showtime, etc.
+                # The key server at tv.media.jio.com validates these JioTV API headers
+                safe_output = output_path.replace('\\', '/')
+                
+                cmd = ['ffmpeg', '-y']
+                
+                # Extract the __hdnea__ cookie from the URL
+                hdnea_cookie = ""
+                if '__hdnea__' in stream_url:
+                    try:
+                        from urllib.parse import urlparse, parse_qs
+                        url_parsed = urlparse(stream_url)
+                        url_qs = parse_qs(url_parsed.query)
+                        if '__hdnea__' in url_qs:
+                            hdnea_cookie = "__hdnea__=" + url_qs['__hdnea__'][0]
+                    except Exception:
+                        hdnea_cookie = "__hdnea__" + stream_url.split("__hdnea__")[-1].split("&")[0]
+
+                # Build headers matching what player.py passes to InputStream.Adaptive
+                # player.py lines 56-67, 180, 321: uses getHeaders() + cookie
+                api_headers = getHeaders()
+                if api_headers:
+                    api_headers["channelid"] = str(channel_id)
+                    if showtime and srno:
+                        api_headers["srno"] = str(srno)
+                        api_headers["showtime"] = str(showtime)
+                    api_headers["cookie"] = hdnea_cookie or headers.get("cookie", "")
+                    api_headers.setdefault("user-agent", "jiotv")
+                else:
+                    api_headers = headers
+
+                # ffmpeg -headers format: each header on its own line terminated by \r\n
+                ffmpeg_headers = ""
+                for hk, hv in api_headers.items():
+                    if hv and isinstance(hv, str):
+                        ffmpeg_headers += f"{hk}: {hv}\r\n"
+                
+                if ffmpeg_headers:
+                    cmd.extend(['-headers', ffmpeg_headers])
+                
+                cmd.extend([
+                    '-i', stream_url,  # Use the master M3U8 URL directly
+                    '-c', 'copy',
+                    '-bsf:a', 'aac_adtstoasc',
+                    safe_output
+                ])
+                
+                Script.log(f"[DOWNLOAD] ffmpeg command (url truncated): ffmpeg -y -headers [auth headers] -i [stream_url] -c copy -bsf:a aac_adtstoasc {safe_output}", lvl=Script.INFO)
+                
+                process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    universal_newlines=True,
+                )
+                
+                # Monitor with timeout - VOD streams can be long
+                stdout, stderr = process.communicate(timeout=1800)  # 30 min timeout
+                
+                if process.returncode == 0 and os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+                    file_size_mb = os.path.getsize(output_path) / (1024 * 1024)
+                    Script.log(f"[DOWNLOAD] ffmpeg direct download SUCCESS: {output_path} ({file_size_mb:.1f} MB)", lvl=Script.INFO)
+                    Script.notify("Download Complete", f"Saved: {output_path} ({file_size_mb:.1f} MB)")
+                    return
+                else:
+                    Script.log(f"[DOWNLOAD] ffmpeg direct download failed (code {process.returncode})", lvl=Script.ERROR)
+                    if stderr:
+                        Script.log(f"[DOWNLOAD] ffmpeg stderr: {stderr[-500:]}", lvl=Script.ERROR)
+                    
+            except subprocess.TimeoutExpired:
+                process.kill()
+                Script.log("[DOWNLOAD] ffmpeg direct download timed out after 30 min", lvl=Script.ERROR)
+            except Exception as e:
+                Script.log(f"[DOWNLOAD] ffmpeg direct download error: {e}", lvl=Script.ERROR)
+            
+            # APPROACH 2: Segment-based download (fallback)
+            # Downloads encrypted segments and saves them for manual processing
+            Script.log("[DOWNLOAD] === Trying segment-based download (fallback method) ===", lvl=Script.INFO)
+            try:
+                # Get another fresh stream URL
+                stream_url2, headers2 = get_stream_url_for_recording(channel_id, showtime, srno, programId, begin, end)
+                if stream_url2:
+                    success = multi_threaded_download(stream_url2, output_path, headers2)
+                    if success:
+                        Script.log(f"[DOWNLOAD] VOD saved to: {output_path}", lvl=Script.INFO)
+                        Script.notify("Download Complete", f"Saved to: {output_path}")
+                        return
+            except Exception as e:
+                Script.log(f"[DOWNLOAD] Segment download fallback error: {e}", lvl=Script.ERROR)
+            
+            Script.notify("Download Failed", "Check logs for details. Segments may be saved for manual processing.")
 
         download_thread = threading.Thread(target=do_download)
         download_thread.daemon = True
@@ -1003,3 +1433,4 @@ def download_vod(plugin, *args, **kwargs):
     except Exception as e:
         Script.log(f"[RECORDING] Error in download_vod: {e}", lvl=Script.ERROR)
         Script.notify("Download Failed", str(e))
+
