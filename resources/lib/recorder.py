@@ -135,7 +135,7 @@ def _inhibit_power_saving(enable):
         Script.log(f"[DOWNLOAD] Power saving control error: {e}", lvl=Script.WARNING)
 
 
-def _build_ffmpeg_cmd(stream_url, output_file, channel_id, showtime, srno, headers):
+def _build_ffmpeg_cmd(stream_url, output_file, channel_id, showtime, srno, headers, audio_map=None):
     """Build an ffmpeg command with proper auth headers matching InputStream.Adaptive."""
     safe_output = output_file.replace('\\', '/')
     cmd = ['ffmpeg', '-y']
@@ -171,7 +171,12 @@ def _build_ffmpeg_cmd(stream_url, output_file, channel_id, showtime, srno, heade
     if ffmpeg_headers:
         cmd.extend(['-headers', ffmpeg_headers])
 
-    cmd.extend(['-i', stream_url, '-c', 'copy', '-bsf:a', 'aac_adtstoasc', safe_output])
+    cmd.extend(['-i', stream_url])
+    
+    if audio_map is not None:
+        cmd.extend(['-map', '0:v?', '-map', f'0:a:{audio_map}'])
+    
+    cmd.extend(['-c', 'copy', '-bsf:a', 'aac_adtstoasc', safe_output])
     return cmd
 
 
@@ -362,8 +367,8 @@ def get_stream_url_for_recording(channel_id, showtime=None, srno=None, programId
             sony_headers.pop("Content-Type", None)
             sony_headers.pop("Content-Length", None)
 
-            # Parse M3U8 if needed
-            if final_url and not isCatchup:
+            # Parse M3U8 to extract best quality and variants
+            if final_url:
                 try:
                     m3u8Headers = sony_headers.copy()
                     m3u8Headers.update({
@@ -378,7 +383,9 @@ def get_stream_url_for_recording(channel_id, showtime=None, srno=None, programId
                     variant_m3u8 = m3u8.loads(m3u8String)
                     if variant_m3u8.is_variant:
                         # Use best quality for recording
-                        best_playlist = variant_m3u8.playlists[-1]
+                        # sort playlists by bandwidth
+                        playlists = sorted(variant_m3u8.playlists, key=lambda p: (p.stream_info.bandwidth if p.stream_info.bandwidth else 0))
+                        best_playlist = playlists[-1]
                         final_url = resolve_and_merge_query(final_url, best_playlist.uri)
                 except Exception as e:
                     Script.log(f"[RECORDING] Error parsing M3U8: {e}", lvl=Script.WARNING)
@@ -1305,6 +1312,87 @@ def ensure_ffmpeg_available():
     return False
 
 
+def _prompt_audio_selection(channel_id, showtime, srno, programId, begin, end):
+    """Parses the M3U8 stream and prompts the user to select an audio track if there are multiple."""
+    try:
+        import m3u8
+        import requests
+        
+        # Fetch stream URL
+        stream_url, headers = get_stream_url_for_recording(channel_id, showtime, srno, programId, begin, end)
+        if not stream_url:
+            return None
+        
+        req_headers = {k: v for k, v in headers.items() if v and isinstance(v, str)}
+        Script.log(f"[_prompt_audio_selection] Fetching M3U8: {stream_url}", lvl=Script.INFO)
+        res = requests.get(stream_url, headers=req_headers, verify=False, timeout=15)
+        res.raise_for_status()
+        
+        playlist = m3u8.loads(res.text)
+        if playlist.is_variant:
+            audio_media = [m for m in playlist.media if m.type == "AUDIO"]
+            if len(audio_media) > 1:
+                options = []
+                for i, m in enumerate(audio_media):
+                    name = m.name or f"Track {i+1}"
+                    lang = (m.language or "Unknown").upper()
+                    if m.channels:
+                        options.append(f"{name} ({lang}) - {m.channels}ch")
+                    else:
+                        options.append(f"{name} ({lang})")
+                
+                sel = Dialog().select("Select Audio Track to Download", options)
+                if sel >= 0:
+                    Script.log(f"[_prompt_audio_selection] User selected audio track {sel}: {options[sel]}", lvl=Script.INFO)
+                    return sel
+        
+        # Fallback to ffprobe if it's not a variant playlist or doesn't list media
+        return __prompt_audio_ffprobe(stream_url, headers)
+    except Exception as e:
+        Script.log(f"[_prompt_audio_selection] Error parsing M3U8: {e}", lvl=Script.WARNING)
+        try:
+            return __prompt_audio_ffprobe(stream_url, headers)
+        except:
+            return None
+
+def __prompt_audio_ffprobe(stream_url, headers):
+    try:
+        import subprocess, json
+        probe_cmd = ['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_streams']
+        ffmpeg_headers = ""
+        for hk, hv in headers.items():
+            if hv and isinstance(hv, str):
+                ffmpeg_headers += f"{hk}: {hv}\r\n"
+        if ffmpeg_headers:
+            probe_cmd.extend(['-headers', ffmpeg_headers])
+        probe_cmd.append(stream_url)
+        
+        probe_proc = subprocess.Popen(probe_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        stdout, _ = probe_proc.communicate(timeout=15)
+        probe_data = json.loads(stdout)
+        
+        audio_streams = [s for s in probe_data.get('streams', []) if s.get('codec_type') == 'audio']
+        
+        if len(audio_streams) > 1:
+            options = []
+            for i, s in enumerate(audio_streams):
+                channels = s.get('channels', 2)
+                bitrate = s.get('bit_rate', 'unknown')
+                if bitrate != 'unknown':
+                    bitrate = f"{int(bitrate)//1000} kbps"
+                lang = s.get('tags', {}).get('language', 'unknown').upper()
+                if lang == 'UNKNOWN':
+                    lang = f"Track {i+1}"
+                options.append(f"{lang} - {channels}ch ({bitrate})")
+            
+            sel = Dialog().select("Select Audio Track to Download", options)
+            if sel >= 0:
+                Script.log(f"[__prompt_audio_ffprobe] User selected audio track {sel}: {options[sel]}", lvl=Script.INFO)
+                return sel
+    except Exception as probe_err:
+        Script.log(f"Audio probe error: {probe_err}", lvl=Script.WARNING)
+    return None
+
 @Script.register
 def record_live_stream(plugin, channel_id, channel_name="Unknown Channel"):
     """
@@ -1439,6 +1527,13 @@ def download_vod(plugin, *args, **kwargs):
             Script.notify("Download Failed", "ffmpeg is required but could not be installed")
             return
 
+        audio_map = kwargs.get('audio_map', None)
+        if audio_map is None:
+            audio_map = _prompt_audio_selection(channel_id, showtime, srno, programId, begin, end)
+            if audio_map is not None:
+                kwargs['audio_map'] = audio_map
+                Script.log(f"[DOWNLOAD] Selected audio_map: {audio_map}", lvl=Script.INFO)
+
         # Generate default filename
         safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).rstrip()
         default_filename = f"VOD_{safe_title.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp4"
@@ -1523,7 +1618,7 @@ def download_vod(plugin, *args, **kwargs):
                             continue
 
                         chunk_file = os.path.join(temp_dir, f"chunk_{i:04d}.mp4")
-                        cmd = _build_ffmpeg_cmd(stream_url, chunk_file, channel_id, showtime, srno, headers)
+                        cmd = _build_ffmpeg_cmd(stream_url, chunk_file, channel_id, showtime, srno, headers, audio_map=kwargs.get('audio_map', None))
 
                         success = _run_ffmpeg_chunk(cmd, chunk_file, timeout=180)
                         if success:
@@ -1538,7 +1633,7 @@ def download_vod(plugin, *args, **kwargs):
                             stream_url2, headers2 = get_stream_url_for_recording(
                                 channel_id, showtime, srno, programId, chunk_begin, chunk_end)
                             if stream_url2:
-                                cmd2 = _build_ffmpeg_cmd(stream_url2, chunk_file, channel_id, showtime, srno, headers2)
+                                cmd2 = _build_ffmpeg_cmd(stream_url2, chunk_file, channel_id, showtime, srno, headers2, audio_map=selected_audio_map)
                                 if _run_ffmpeg_chunk(cmd2, chunk_file, timeout=180):
                                     chunk_files.append(chunk_file)
                                     failed_chunks -= 1
@@ -1705,7 +1800,7 @@ SUPERFAST_WORKERS = 6
 
 def _download_one_chunk(args):
     """Worker function for parallel chunk download. Returns (index, chunk_file, success)."""
-    i, chunk_begin, chunk_end, temp_dir, channel_id, showtime, srno, programId = args
+    i, chunk_begin, chunk_end, temp_dir, channel_id, showtime, srno, programId, audio_map = args
     try:
         Script.log(f"[PARALLEL-DL] Worker starting chunk {i}: {chunk_begin} \u2192 {chunk_end}", lvl=Script.INFO)
 
@@ -1717,7 +1812,8 @@ def _download_one_chunk(args):
             return (i, None, False)
 
         chunk_file = os.path.join(temp_dir, f"chunk_{i:04d}.mp4")
-        cmd = _build_ffmpeg_cmd(stream_url, chunk_file, channel_id, showtime, srno, headers)
+        
+        cmd = _build_ffmpeg_cmd(stream_url, chunk_file, channel_id, showtime, srno, headers, audio_map)
 
         success = _run_ffmpeg_chunk(cmd, chunk_file, timeout=180)
         if success:
@@ -1731,7 +1827,7 @@ def _download_one_chunk(args):
             stream_url2, headers2 = get_stream_url_for_recording(
                 channel_id, showtime, srno, programId, chunk_begin, chunk_end)
             if stream_url2:
-                cmd2 = _build_ffmpeg_cmd(stream_url2, chunk_file, channel_id, showtime, srno, headers2)
+                cmd2 = _build_ffmpeg_cmd(stream_url2, chunk_file, channel_id, showtime, srno, headers2, audio_map)
                 if _run_ffmpeg_chunk(cmd2, chunk_file, timeout=180):
                     Script.log(f"[PARALLEL-DL] Chunk {i} retry OK", lvl=Script.INFO)
                     return (i, chunk_file, True)
@@ -1793,6 +1889,13 @@ def _download_vod_parallel(plugin, num_workers, mode_label, *args, **kwargs):
             Script.notify("Download Failed", "ffmpeg is required but could not be installed")
             return
 
+        audio_map = kwargs.get('audio_map', None)
+        if audio_map is None:
+            audio_map = _prompt_audio_selection(channel_id, showtime, srno, programId, begin, end)
+            if audio_map is not None:
+                kwargs['audio_map'] = audio_map
+                Script.log(f"{log_tag} Selected audio_map: {audio_map}", lvl=Script.INFO)
+
         safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).rstrip()
         default_filename = f"VOD_{safe_title.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp4"
 
@@ -1853,11 +1956,12 @@ def _download_vod_parallel(plugin, num_workers, mode_label, *args, **kwargs):
                 os.makedirs(temp_dir, exist_ok=True)
 
                 # Prepare worker arguments
+                audio_map = kwargs.get('audio_map', None)
                 worker_args = []
                 for i, (chunk_begin, chunk_end) in enumerate(chunks):
                     worker_args.append((
                         i, chunk_begin, chunk_end, temp_dir,
-                        channel_id, showtime, srno, programId
+                        channel_id, showtime, srno, programId, audio_map
                     ))
 
                 # Download chunks in parallel
