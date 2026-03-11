@@ -223,11 +223,11 @@ def getCachedChannels():
         channelList = db.get("channelList", False)
         if not channelList:
             try:
-                channelListResp = json.load(
-                    urllib.request.urlopen(
-                        "https://jiotvapi.cdn.jio.com/apis/v3.0/getMobileChannelList/get/?langId=6&devicetype=phone&os=android&usertype=JIO&version=396"
-                    )
-                ).get("result")
+                req = urllib.request.Request(
+                    "https://jiotvapi.cdn.jio.com/apis/v3.0/getMobileChannelList/get/?langId=6&devicetype=phone&os=android&usertype=JIO&version=396",
+                    headers={"User-Agent": "okhttp/4.2.2"}
+                )
+                channelListResp = json.load(urllib.request.urlopen(req)).get("result")
                 db["channelList"] = channelListResp
             except:
                 Script.notify("Connection error ", "Retry after sometime")
@@ -239,11 +239,11 @@ def getCachedDictionary():
         dictionary = db.get("dictionary", False)
         if not dictionary:
             try:
-                r = json.load(
-                    urllib.request.urlopen(
-                        "https://jiotvapi.cdn.jio.com/apis/v1.3/dictionary/dictionary?langId=6"
-                    )
+                req = urllib.request.Request(
+                    "https://jiotvapi.cdn.jio.com/apis/v1.3/dictionary/dictionary?langId=6",
+                    headers={"User-Agent": "okhttp/4.2.2"}
                 )
+                r = json.load(urllib.request.urlopen(req))
                 db["dictionary"] = r
                 print(db["dictionary"].get("channelCategoryMapping"))
             except:
@@ -318,66 +318,24 @@ def getVODContent():
 
 def getVODChannels():
     """
-    Get channels that are likely to support VOD/catchup content.
-    Since channel_category_name is None for all channels, use name-based detection.
+    Get channels that support VOD/catchup content.
+    Determined simply by the isCatchupAvailable flag from the API.
     """
     try:
         all_channels = getCachedChannels()
         vod_channels = []
         
         for channel in all_channels:
-            channel_name = channel.get("channel_name", "").lower()
             has_catchup = channel.get("isCatchupAvailable", False)
             
-            # Entertainment brands that typically have VOD content
-            entertainment_brands = [
-                "colors", "star", "zee", "sony", "mtv", "bindass", "rishtey",
-                "&tv", "dd", "news", "aaj tak", "ndtv", "republic", "india today",
-                "times now", "cnbc", "tv18", "bbc", "fox", "hbo", "warner"
-            ]
-            
-            # Movie channels
-            movie_keywords = ["movies", "movie", "cinema", "films"]
-            
-            # Regional entertainment keywords
-            regional_keywords = ["tamil", "telugu", "malayalam", "kannada", "bengali", "marathi", "gujarati", "punjabi"]
-            
-            # Check if channel is VOD-capable
-            is_entertainment = any(brand in channel_name for brand in entertainment_brands)
-            is_movie_channel = any(movie in channel_name for movie in movie_keywords)
-            is_regional = any(region in channel_name for region in regional_keywords)
-            
-            # Include channels that match VOD criteria AND have catchup
-            if has_catchup and (is_entertainment or is_movie_channel or is_regional):
+            # Include all channels that have catchup (VOD) available
+            if has_catchup:
                 channel["_isVODChannel"] = True
-                channel["_vodReason"] = []
-                if is_entertainment:
-                    channel["_vodReason"].append("Entertainment Brand")
-                if is_movie_channel:
-                    channel["_vodReason"].append("Movie Channel")
-                if is_regional:
-                    channel["_vodReason"].append("Regional")
-                if has_catchup:
-                    channel["_vodReason"].append("Has Catchup")
-                
                 vod_channels.append(channel)
         
         if vod_channels:
-            # Sort by brand priority (Colors first, then Star, Zee, Sony, others)
-            def sort_key(channel):
-                name = channel.get("channel_name", "").lower()
-                if "colors" in name:
-                    return 0
-                elif "star" in name:
-                    return 1
-                elif "zee" in name:
-                    return 2
-                elif "sony" in name:
-                    return 3
-                else:
-                    return 4
-            
-            vod_channels.sort(key=sort_key)
+            # Sort by channel name initially
+            vod_channels.sort(key=lambda x: str(x.get("channel_name", "")).lower())
             Script.log(f"Found {len(vod_channels)} VOD-capable channels from {len(all_channels)} total channels", lvl=Script.INFO)
             return vod_channels
         else:
@@ -404,6 +362,8 @@ def getChannelVODContent(channel_id, offset_days=0):
         # Use negative offset to go back in time
         epg_url = f"https://jiotvapi.cdn.jio.com/apis/v1.3/getepg/get?offset={-offset_days}&channel_id={channel_id}&langId=6"
         
+        headers = dict(headers)
+        headers["User-Agent"] = "okhttp/4.2.2"
         resp = urlquick.get(epg_url, headers=headers, verify=False, max_age=-1, timeout=15)
         epg_data = resp.json()
         
@@ -412,10 +372,8 @@ def getChannelVODContent(channel_id, offset_days=0):
         
         for show in epg_data.get("epg", []):
             # Include past shows with catchup availability (VOD-like)
-            if (show.get("stbCatchupAvailable") and 
-                show.get("startEpoch", 0) < current_time and
-                show.get("episodePoster") and
-                show.get("description", "")):
+            # Some channels like Brio TV or Cartoon Network wrongly have stbCatchupAvailable=False
+            if (show.get("startEpoch", 0) < current_time):
                 
                 # Mark as channel VOD content with offset info
                 show["_isChannelVOD"] = True

@@ -84,18 +84,7 @@ monitor = Monitor()
 def root(plugin):
     yield Listitem.from_dict(
         **{
-            "label": "Featured",
-            "art": {
-                "thumb": IMG_CATCHUP_SHOWS + "cms/TKSS_Carousal1.jpg",
-                "icon": IMG_CATCHUP_SHOWS + "cms/TKSS_Carousal1.jpg",
-                "fanart": IMG_CATCHUP_SHOWS + "cms/TKSS_Carousal1.jpg",
-            },
-            "callback": Route.ref("/resources/lib/main:show_featured"),
-        }
-    )
-    yield Listitem.from_dict(
-        **{
-            "label": "Video on Demand",
+            "label": "Video on Demand/Catchup TV",
             "art": {
                 "thumb": IMG_CATCHUP_SHOWS + "cms/210528144026.jpg",
                 "icon": IMG_CATCHUP_SHOWS + "cms/210528144026.jpg",
@@ -232,19 +221,56 @@ def show_vod(plugin, category=None):
         )
         return
     
-    # Show VOD channels if available
+    # Show VOD channels by language if available
     if vod_channels:
-        yield Listitem.from_dict(
-            **{
-                "label": "VOD Channels",
-                "art": {
-                    "thumb": IMG_CATCHUP_SHOWS + "cms/210528144026.jpg",
-                    "icon": IMG_CATCHUP_SHOWS + "cms/210528144026.jpg",
-                    "fanart": IMG_CATCHUP_SHOWS + "cms/210528144026.jpg",
-                },
-                "callback": Route.ref("/resources/lib/main:show_vod_channels"),
-            }
-        )
+        dictionary = getCachedDictionary()
+        LANG_MAP = dictionary.get("languageIdMapping")
+        
+        # Group VOD channels by language for better accessibility
+        vod_by_language = {}
+        for channel in vod_channels:
+            lang_id = str(channel.get("channelLanguageId", ""))
+            if lang_id in LANG_MAP:
+                lang_name = LANG_MAP[lang_id]
+                if lang_name not in vod_by_language:
+                    vod_by_language[lang_name] = []
+                vod_by_language[lang_name].append(channel)
+            else:
+                # Uncategorized
+                if "Other" not in vod_by_language:
+                    vod_by_language["Other"] = []
+                vod_by_language["Other"].append(channel)
+        
+        # Add language categories
+        for lang_name, channels in sorted(vod_by_language.items()):
+            if channels:  # Only show languages that have channels
+                yield Listitem.from_dict(
+                    **{
+                        "label": f"{lang_name} [COLOR cyan][VOD][/COLOR]",
+                        "art": {
+                            "thumb": IMG_CONFIG["Languages"].get(lang_name, {}).get("tvImg", ""),
+                            "icon": IMG_CONFIG["Languages"].get(lang_name, {}).get("tvImg", ""),
+                            "fanart": IMG_CONFIG["Languages"].get(lang_name, {}).get("promoImg", ""),
+                        },
+                        "callback": Route.ref("/resources/lib/main:show_vod_channels_by_language"),
+                        "params": {"language": lang_name},
+                    }
+                )
+        
+        # Add uncategorized channels if any
+        if "Other" in vod_by_language and vod_by_language["Other"]:
+            yield Listitem.from_dict(
+                **{
+                    "label": f"Other [COLOR cyan][VOD][/COLOR]",
+                    "art": {
+                        "thumb": IMG_CONFIG["Genres"].get("Other", {}).get("tvImg", ""),
+                        "icon": IMG_CONFIG["Genres"].get("Other", {}).get("tvImg", ""),
+                        "fanart": IMG_CONFIG["Genres"].get("Other", {}).get("promoImg", ""),
+                    },
+                    "callback": Route.ref("/resources/lib/main:show_vod_channels_by_language"),
+                    "params": {"language": "Other"},
+                }
+            )
     
     # Show VOD content by category
     if vod_content:
@@ -340,58 +366,7 @@ def show_vod_category(plugin, category):
         yield Listitem.from_dict(**info_dict)
 
 
-# Shows VOD channels
-@Route.register
-def show_vod_channels(plugin):
-    vod_channels = getVODChannels()
-    dictionary = getCachedDictionary()
-    LANG_MAP = dictionary.get("languageIdMapping")
-    
-    # Group VOD channels by language for better accessibility
-    vod_by_language = {}
-    for channel in vod_channels:
-        lang_id = str(channel.get("channelLanguageId", ""))
-        if lang_id in LANG_MAP:
-            lang_name = LANG_MAP[lang_id]
-            if lang_name not in vod_by_language:
-                vod_by_language[lang_name] = []
-            vod_by_language[lang_name].append(channel)
-        else:
-            # Uncategorized
-            if "Other" not in vod_by_language:
-                vod_by_language["Other"] = []
-            vod_by_language["Other"].append(channel)
-    
-    # Add language categories
-    for lang_name, channels in sorted(vod_by_language.items()):
-        if channels:  # Only show languages that have channels
-            yield Listitem.from_dict(
-                **{
-                    "label": f"{lang_name} [COLOR cyan][VOD][/COLOR]",
-                    "art": {
-                        "thumb": IMG_CONFIG["Languages"].get(lang_name, {}).get("tvImg", ""),
-                        "icon": IMG_CONFIG["Languages"].get(lang_name, {}).get("tvImg", ""),
-                        "fanart": IMG_CONFIG["Languages"].get(lang_name, {}).get("promoImg", ""),
-                    },
-                    "callback": Route.ref("/resources/lib/main:show_vod_channels_by_language"),
-                    "params": {"language": lang_name},
-                }
-            )
-    
-    # Add uncategorized channels if any
-    if "Other" in vod_by_language and vod_by_language["Other"]:
-        yield Listitem.from_dict(
-            **{
-                "label": f"Other [COLOR cyan][VOD][/COLOR]",
-                "art": {
-                    "thumb": IMG_CONFIG["Genres"].get("Other", {}).get("tvImg", ""),
-                    "icon": IMG_CONFIG["Genres"].get("Other", {}).get("tvImg", ""),
-                    "fanart": IMG_CONFIG["Genres"].get("Other", {}).get("promoImg", ""),
-                },
-                "callback": Route.ref("/resources/lib/main:show_vod_channels_by_language"),
-                "params": {"language": "Other"},
-            }
-        )
+
 
 
 # Shows VOD channels by language
@@ -1025,7 +1000,10 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
                 "Content-Type": "application/octet-stream",
                 "Accept": "*/*",
             })
-            if cookie_str:
+            if "cookie" in license_headers:
+                cookie_base = license_headers.pop("cookie")
+                license_headers["Cookie"] = cookie_base + (f"; {cookie_str}" if cookie_str else "")
+            elif cookie_str:
                 license_headers["Cookie"] = cookie_str
 
             license_config = {
@@ -1142,7 +1120,10 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
             # Headers for segment requests
             stream_headers = headers.copy()
             stream_headers["User-Agent"] = "okhttp/4.2.2"
-            if cookie_str:
+            if "cookie" in stream_headers:
+                cookie_base = stream_headers.pop("cookie")
+                stream_headers["Cookie"] = cookie_base + (f"; {cookie_str}" if cookie_str else "")
+            elif cookie_str:
                 stream_headers["Cookie"] = cookie_str
             
             props["inputstream.adaptive.stream_headers"] = urlencode(stream_headers)
