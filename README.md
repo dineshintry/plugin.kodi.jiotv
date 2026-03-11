@@ -32,7 +32,7 @@ If you encounter a failure while installing from the zip file:
 2. **Re-launch Kodi**.
 3. Go back to **Install from zip file** and try selecting the file again. This often resolves playback dependency or caching issues during the first install.
 
-## Video On Demand (VOD) / Catch-up Feature
+## Video On Demand (VOD) / Catch-up Feature (Supported after tag v1.0.1)
 
 This add-on now supports Video On Demand (VOD) and catch-up TV functionality for compatible channels.
 
