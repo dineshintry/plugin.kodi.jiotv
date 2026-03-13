@@ -1,0 +1,8 @@
+# Ignore mds folder
+mds/
+
+# Ignore test_scripts folder
+test_scripts/
+
+# Ignore .idea folder
+.idea/
