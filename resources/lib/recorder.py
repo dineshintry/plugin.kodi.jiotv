@@ -135,7 +135,7 @@ def _inhibit_power_saving(enable):
         Script.log(f"[DOWNLOAD] Power saving control error: {e}", lvl=Script.WARNING)
 
 
-def _build_ffmpeg_cmd(stream_url, output_file, channel_id, showtime, srno, headers, audio_map=None):
+def _build_ffmpeg_cmd(stream_url, output_file, channel_id, showtime, srno, headers, audio_map=None, title=None, description=None):
     """Build an ffmpeg command with proper auth headers matching InputStream.Adaptive."""
     safe_output = output_file.replace('\\', '/')
     cmd = ['ffmpeg', '-y']
@@ -175,6 +175,11 @@ def _build_ffmpeg_cmd(stream_url, output_file, channel_id, showtime, srno, heade
     
     if audio_map is not None:
         cmd.extend(['-map', '0:v?', '-map', f'0:a:{audio_map}'])
+        
+    if title:
+        cmd.extend(['-metadata', f'title={title}'])
+    if description:
+        cmd.extend(['-metadata', f'comment={description}'])
     
     cmd.extend(['-c', 'copy', '-bsf:a', 'aac_adtstoasc', safe_output])
     return cmd
@@ -1496,6 +1501,7 @@ def download_vod(plugin, *args, **kwargs):
         if len(args) >= 7:
             channel_id, showtime, srno, programId, begin, end = args[:6]
             title = args[6] if len(args) > 6 else kwargs.get('title', "VOD Content")
+            description = args[7] if len(args) > 7 else kwargs.get('description', '')
         elif kwargs:
             channel_id = kwargs.get('channel_id', '')
             showtime = kwargs.get('showtime', '')
@@ -1504,6 +1510,7 @@ def download_vod(plugin, *args, **kwargs):
             begin = kwargs.get('begin', '')
             end = kwargs.get('end', '')
             title = kwargs.get('title', "VOD Content")
+            description = kwargs.get('description', '')
         else:
             Script.log("[RECORDING] No valid parameters received", lvl=Script.ERROR)
             Script.notify("Download Failed", "Invalid parameters")
@@ -1519,6 +1526,7 @@ def download_vod(plugin, *args, **kwargs):
         begin = str(begin) if begin else ""
         end = str(end) if end else ""
         title = str(title) if title else "VOD Content"
+        description = str(description) if description else ""
 
         Script.log(f"[RECORDING] After conversion: channel_id={channel_id}, showtime={showtime}, srno={srno}", lvl=Script.INFO)
 
@@ -1653,8 +1661,13 @@ def download_vod(plugin, *args, **kwargs):
 
                         concat_cmd = [
                             'ffmpeg', '-y', '-f', 'concat', '-safe', '0',
-                            '-i', concat_list, '-c', 'copy', safe_output
+                            '-i', concat_list
                         ]
+                        if title:
+                            concat_cmd.extend(['-metadata', f'title={title}'])
+                        if description:
+                            concat_cmd.extend(['-metadata', f'comment={description}'])
+                        concat_cmd.extend(['-c', 'copy', safe_output])
                         concat_proc = subprocess.Popen(
                             concat_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
                         concat_proc.communicate(timeout=600)
@@ -1703,7 +1716,7 @@ def download_vod(plugin, *args, **kwargs):
                         return
 
                     progress_bg.update(2, "JioTV Download", f"Downloading: {title}")
-                    cmd = _build_ffmpeg_cmd(stream_url, output_path, channel_id, showtime, srno, headers)
+                    cmd = _build_ffmpeg_cmd(stream_url, output_path, channel_id, showtime, srno, headers, audio_map=kwargs.get('audio_map', None), title=title, description=description)
                     Script.log(f"[DOWNLOAD] ffmpeg direct: {safe_output}", lvl=Script.INFO)
 
                     process = subprocess.Popen(
@@ -1863,6 +1876,7 @@ def _download_vod_parallel(plugin, num_workers, mode_label, *args, **kwargs):
         if len(args) >= 7:
             channel_id, showtime, srno, programId, begin, end = args[:6]
             title = args[6] if len(args) > 6 else kwargs.get('title', "VOD Content")
+            description = args[7] if len(args) > 7 else kwargs.get('description', '')
         elif kwargs:
             channel_id = kwargs.get('channel_id', '')
             showtime = kwargs.get('showtime', '')
@@ -1871,6 +1885,7 @@ def _download_vod_parallel(plugin, num_workers, mode_label, *args, **kwargs):
             begin = kwargs.get('begin', '')
             end = kwargs.get('end', '')
             title = kwargs.get('title', "VOD Content")
+            description = kwargs.get('description', '')
         else:
             Script.log(f"{log_tag} No valid parameters received", lvl=Script.ERROR)
             Script.notify("Download Failed", "Invalid parameters")
@@ -1884,6 +1899,7 @@ def _download_vod_parallel(plugin, num_workers, mode_label, *args, **kwargs):
         begin = str(begin) if begin else ""
         end = str(end) if end else ""
         title = str(title) if title else "VOD Content"
+        description = str(description) if description else ""
 
         if not ensure_ffmpeg_available():
             Script.notify("Download Failed", "ffmpeg is required but could not be installed")
@@ -2014,8 +2030,13 @@ def _download_vod_parallel(plugin, num_workers, mode_label, *args, **kwargs):
 
                     concat_cmd = [
                         'ffmpeg', '-y', '-f', 'concat', '-safe', '0',
-                        '-i', concat_list, '-c', 'copy', safe_output
+                        '-i', concat_list
                     ]
+                    if title:
+                        concat_cmd.extend(['-metadata', f'title={title}'])
+                    if description:
+                        concat_cmd.extend(['-metadata', f'comment={description}'])
+                    concat_cmd.extend(['-c', 'copy', safe_output])
                     concat_proc = subprocess.Popen(
                         concat_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
                     concat_proc.communicate(timeout=600)

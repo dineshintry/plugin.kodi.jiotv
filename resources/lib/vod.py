@@ -413,7 +413,8 @@ def show_vod_channel_content(plugin, channel_id, offset_days=None):
                 "programId": info_dict['params']['programId'],
                 "begin": info_dict['params']['begin'],
                 "end": info_dict['params']['end'],
-                "title": item.get("showname", "VOD Content")
+                "title": item.get("showname", "VOD Content"),
+                "description": item.get("description", "")
             }
             # Standard Kodi context menu items: (label, action)
             from urllib.parse import urlencode
