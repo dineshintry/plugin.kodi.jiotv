@@ -40,20 +40,25 @@ jobs:
           zip -r ../repo/$REPO_ID/$REPO_ID-1.0.0.zip $REPO_ID
           cd ..
           
-          # Create copies in root for easy browser access
-          cp repo/$REPO_ID/$REPO_ID-1.0.0.zip repo/
-          # cp repo/$ADDON_ID/$ADDON_ID-$VERSION.zip repo/
-          
-          # Copy assets for repo listings
+          # 2.5 Asset preparation for remote repo listing
+          # Kodi expects icons at $REPO_URL/$ADDON_ID/resources/icon.png or $REPO_URL/$ADDON_ID/icon.png
+          mkdir -p repo/$ADDON_ID/resources
+          cp addon/resources/icon.png repo/$ADDON_ID/resources/icon.png || true
+          cp addon/resources/fanart.png repo/$ADDON_ID/resources/fanart.png || true
           cp addon/resources/icon.png repo/$ADDON_ID/icon.png || true
           cp addon/resources/fanart.png repo/$ADDON_ID/fanart.png || true
-          cp addon/repository.jiotvdirect/icon.png repo/$REPO_ID/icon.png || true
-          cp addon/repository.jiotvdirect/fanart.png repo/$REPO_ID/fanart.png || true
           
-          # 3. Generate combined addons.xml and md5 using robust script
+          mkdir -p repo/$REPO_ID/resources
+          cp addon/repository.jiotvdirect/icon.png repo/$REPO_ID/resources/icon.png || true
+          cp addon/repository.jiotvdirect/fanart.png repo/$REPO_ID/resources/fanart.png || true
+          cp addon/repository.jiotvdirect/icon.png repo/$REPO_ID/icon.png || true
+          cp repo/$REPO_ID/$REPO_ID-1.0.0.zip repo/
+          
+          # 3. Generate combined addons.xml and md5
           python3 addon/scripts/generate_repo.py
 
-          # 4. Generate landing page
+          # Verification: List repo content
+          ls -R repo/
 
           # 4. Generate landing page
           cat <<EOF > repo/index.html
