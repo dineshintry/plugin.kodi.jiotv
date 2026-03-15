@@ -31,17 +31,6 @@ def get_record_live_stream_callback():
 def root(plugin):
     yield Listitem.from_dict(
         **{
-            "label": "Featured",
-            "art": {
-                "thumb": IMG_CATCHUP_SHOWS + "cms/TKSS_Carousal1.jpg",
-                "icon": IMG_CATCHUP_SHOWS + "cms/TKSS_Carousal1.jpg",
-                "fanart": IMG_CATCHUP_SHOWS + "cms/TKSS_Carousal1.jpg",
-            },
-            "callback": Route.ref("/resources/lib/vod:show_featured"),
-        }
-    )
-    yield Listitem.from_dict(
-        **{
             "label": "Video on Demand",
             "art": {
                 "thumb": IMG_CATCHUP_SHOWS + "cms/210528144026.jpg",
