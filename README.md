@@ -26,9 +26,13 @@ It uses a direct license key fetcher with cookies for better streaming performan
    - Go to **Settings** > **Add-ons**.
    - Select **Install from zip file**. (Enable "Unknown sources" if prompted)
    - Choose `JioTV Direct Repo`.
-   - Select the addon zip file to install.
-5. **Updates**: By installing via this repository source, your add-on will now receive automatic updates whenever a new version is released.
-6. **Configuration**: Once installed, open the add-on settings to log in with your Jio account.
+   - Select `repository.jiotvdirect-1.0.0.zip` to install.
+5. **Install Addon from Repo**:
+   - Go to **Install from repository**.
+   - Select **JioTV Direct Repository**.
+   - Go to **Video add-ons** and select **JioTV Direct**.
+6. **Updates**: By installing via this repository, your add-on will now receive automatic updates whenever a new version is released.
+7. **Configuration**: Once installed, open the add-on settings to log in with your Jio account.
 
 ### Troubleshooting Installation
 If you encounter a failure while installing from the zip file:

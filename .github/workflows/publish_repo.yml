@@ -19,40 +19,50 @@ jobs:
       - name: Set up Repository Structure
         run: |
           mkdir -p repo/plugin.kodi.jiotv
+          mkdir -p repo/repository.jiotvdirect
           
           # Use the git tag as the source of truth for the version (v1.1.0 -> 1.1.0)
           VERSION=${GITHUB_REF_NAME#v}
-          ADDON_ID=$(grep -m 1 -oP 'id="\Kplugin.kodi.jiotv' addon/addon.xml)
+          ADDON_ID="plugin.kodi.jiotv"
+          REPO_ID="repository.jiotvdirect"
           
-          # Prepare a temporary directory with the addon ID as the folder name
+          # 1. Package the main Addon
           mkdir -p temp/$ADDON_ID
           cp -r addon/* temp/$ADDON_ID/
-          
           cd temp
-          zip -r ../repo/$ADDON_ID/$ADDON_ID-$VERSION.zip $ADDON_ID -x "*.git*" ".github*" "kodi.log" "mds/*" "test_scripts/*"
+          zip -r ../repo/$ADDON_ID/$ADDON_ID-$VERSION.zip $ADDON_ID -x "*.git*" ".github*" "kodi.log" "mds/*" "test_scripts/*" "repository.jiotvdirect/*"
           cd ..
           
-          # Create a copy of the zip in the root for direct access if needed
-          cp repo/$ADDON_ID/$ADDON_ID-$VERSION.zip repo/
+          # 2. Package the Repository Addon
+          mkdir -p temp_repo/$REPO_ID
+          cp -r addon/repository.jiotvdirect/* temp_repo/$REPO_ID/
+          cd temp_repo
+          zip -r ../repo/$REPO_ID/$REPO_ID-1.0.0.zip $REPO_ID
+          cd ..
           
-          # Copy icon and fanart for the repo listing
+          # Create copies in root for easy browser access
+          cp repo/$ADDON_ID/$ADDON_ID-$VERSION.zip repo/
+          cp repo/$REPO_ID/$REPO_ID-1.0.0.zip repo/
+          
+          # Copy assets for repo listings
           cp addon/resources/icon.png repo/$ADDON_ID/icon.png || true
           cp addon/resources/fanart.png repo/$ADDON_ID/fanart.png || true
+          cp addon/repository.jiotvdirect/icon.png repo/$REPO_ID/icon.png || true
+          cp addon/repository.jiotvdirect/fanart.png repo/$REPO_ID/fanart.png || true
           
-          # Generate addons.xml and addons.xml.md5
-          # This is a simplified generator. For a real repo, we should use a proper script.
-          # Here we'll create a basic one for this single addon.
-          cat <<EOF > repo/addons.xml
-          <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-          <addons>
-          $(cat addon/addon.xml | sed 's/<?xml.*?>//')
-          </addons>
-          EOF
+          # 3. Generate combined addons.xml
+          echo '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' > repo/addons.xml
+          echo '<addons>' >> repo/addons.xml
+          # Add Plugin Addon
+          cat addon/addon.xml | sed 's/<?xml.*?>//' >> repo/addons.xml
+          # Add Repository Addon
+          cat addon/repository.jiotvdirect/addon.xml | sed 's/<?xml.*?>//' >> repo/addons.xml
+          echo '</addons>' >> repo/addons.xml
           
           # Generate MD5
           md5sum repo/addons.xml | cut -d ' ' -f 1 > repo/addons.xml.md5
 
-          # Generate index.html for a better landing page experience
+          # 4. Generate landing page
           cat <<EOF > repo/index.html
           <!DOCTYPE html>
           <html>
@@ -65,23 +75,29 @@ jobs:
                   img.logo { width: 120px; height: 120px; border-radius: 20px; margin-bottom: 20px; }
                   h1 { margin: 0 0 10px; color: #2c3e50; }
                   .version { color: #7f8c8d; font-size: 0.9em; margin-bottom: 30px; }
+                  .btn { background: #27ae60; color: white !important; padding: 12px 25px; border-radius: 5px; text-decoration: none; font-weight: bold; display: inline-block; margin: 10px; transition: background 0.2s; }
+                  .btn:hover { background: #219150; }
+                  .btn-repo { background: #2980b9; }
+                  .btn-repo:hover { background: #2471a3; }
                   .url-box { background: #edf2f7; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 1.1em; margin: 20px 0; border: 1px dashed #cbd5e0; word-break: break-all; }
                   .instructions { text-align: left; margin-top: 40px; }
                   h2 { color: #2c3e50; border-bottom: 2px solid #edf2f7; padding-bottom: 10px; }
                   ol { padding-left: 20px; }
                   li { margin-bottom: 10px; }
-                  code { background: #edf2f7; padding: 2px 5px; border-radius: 4px; }
               </style>
           </head>
           <body>
               <div class="card">
                   <img src="plugin.kodi.jiotv/icon.png" class="logo" alt="JioTV Direct Icon">
                   <h1>JioTV Direct</h1>
-                  <div class="version">Current Version: v$VERSION</div>
-                  <p>This is the official Kodi repository for JioTV Direct.</p>
+                  <div class="version">Latest Release: v$VERSION</div>
+                  <p>Welcome to the official JioTV Direct repository.</p>
                   
                   <div style="margin: 30px 0;">
-                      <a href="$ADDON_ID-$VERSION.zip" style="background: #27ae60; color: white; padding: 12px 25px; border-radius: 5px; text-decoration: none; font-weight: bold; display: inline-block;">Download $ADDON_ID-$VERSION.zip</a>
+                      <p><strong>Recommended:</strong> Install the Repository to get automatic updates.</p>
+                      <a href="$REPO_ID-1.0.0.zip" class="btn btn-repo">Download Repository ZIP</a>
+                      <br>
+                      <small>or <a href="$ADDON_ID-$VERSION.zip">Download Plugin ZIP only</a></small>
                   </div>
 
                   <h2>Kodi Source URL</h2>
@@ -94,18 +110,17 @@ jobs:
                           <li>In Kodi, go to <strong>Settings</strong> > <strong>File Manager</strong> > <strong>Add Source</strong>.</li>
                           <li>Enter the URL above and name it <code>JioTV Direct Repo</code>.</li>
                           <li>Go to <strong>Settings</strong> > <strong>Add-ons</strong> > <strong>Install from zip file</strong>.</li>
-                          <li>Select <code>JioTV Direct Repo</code> and choose the ZIP file listed inside.</li>
-                          <li>The addon will install and updates will be handled automatically.</li>
+                          <li>Select <code>JioTV Direct Repo</code> and choose <code>$REPO_ID-1.0.0.zip</code>.</li>
+                          <li>Once installed, select <strong>Install from repository</strong> > <strong>JioTV Direct Repository</strong> > <strong>Video add-ons</strong> > <strong>JioTV Direct</strong>.</li>
                       </ol>
                   </div>
 
-                  <!-- Kodi Scraper Compatibility List -->
                   <div style="text-align: left; margin-top: 50px; border-top: 1px solid #edf2f7; padding-top: 20px;">
                       <h3 style="font-size: 0.9em; color: #7f8c8d;">Repository Files:</h3>
                       <ul style="list-style: none; padding: 0; font-family: monospace; font-size: 0.85em;">
+                          <li><a href="$REPO_ID-1.0.0.zip">$REPO_ID-1.0.0.zip</a></li>
                           <li><a href="$ADDON_ID-$VERSION.zip">$ADDON_ID-$VERSION.zip</a></li>
                           <li><a href="addons.xml">addons.xml</a></li>
-                          <li><a href="addons.xml.md5">addons.xml.md5</a></li>
                       </ul>
                   </div>
               </div>
