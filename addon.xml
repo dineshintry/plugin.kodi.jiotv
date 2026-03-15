@@ -22,7 +22,13 @@
         <platform>all</platform>
         <license>MIT</license>
         <news>
-	            </news>
+v1.1.0
+- Refactored main.py into modular components (auth, menu, player, pvr, recorder, vod).
+- Integrated merge changes from master branch.
+- Added automated GitHub Pages repository for direct updates.
+- Fixed Featured menu visibility.
+- Improved VOD description in downloads.
+        </news>
         <disclaimer>This plugin is not officially commissioned/supported by Jio. The trademark "Jio"
             is registered by "Reliance Corporate IT Park Limited (RCITPL)"</disclaimer>
         <assets>

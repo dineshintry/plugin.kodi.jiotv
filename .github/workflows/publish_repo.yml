@@ -20,10 +20,9 @@ jobs:
         run: |
           mkdir -p repo/plugin.kodi.jiotv
           
-          # Create the zip file for the addon
-          # We zip the 'addon' folder into a zip named after the addon ID and version
-          VERSION=$(grep -m 1 -oP 'version="\K[^"]+' addon/addon.xml)
-          ADDON_ID=$(grep -m 1 -oP 'id="\K[^"]+' addon/addon.xml)
+          # Use the git tag as the source of truth for the version (v1.1.0 -> 1.1.0)
+          VERSION=${GITHUB_REF_NAME#v}
+          ADDON_ID=$(grep -m 1 -oP 'id="\Kplugin.kodi.jiotv' addon/addon.xml)
           
           cd addon
           zip -r ../repo/$ADDON_ID/$ADDON_ID-$VERSION.zip . -x "*.git*" ".github*" "kodi.log" "mds/*" "test_scripts/*"
