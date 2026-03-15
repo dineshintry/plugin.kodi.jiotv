@@ -74,5 +74,19 @@ def download_vod_superfast(*args, **kwargs):
     from resources.lib.recorder import download_vod_superfast as _download_vod_superfast
     return _download_vod_superfast(*args, **kwargs)
 
+@Script.register
+def backupsettings(*args, **kwargs):
+    from resources.lib.utils import backupSettings
+    backupSettings()
+    from codequick import Script
+    Script.notify("JioTV", "Account data backed up")
+
+@Script.register
+def restoresettings(*args, **kwargs):
+    from resources.lib.utils import restoreSettings
+    restoreSettings()
+    from codequick import Script
+    Script.notify("JioTV", "Account data restored")
+
 if __name__ == "__main__":
     run()

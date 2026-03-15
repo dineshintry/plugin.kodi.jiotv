@@ -94,6 +94,28 @@
 					</control>
 				</setting>
 			</group>
+			<group id="2" label="Backup &amp; Restore">
+				<setting help="" id="backupsettings" label="Backup Account Data" type="action">
+					<level>0</level>
+					<data>RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/backupsettings/)</data>
+					<constraints>
+						<allowempty>true</allowempty>
+					</constraints>
+					<control format="action" type="button">
+						<close>true</close>
+					</control>
+				</setting>
+				<setting help="" id="restoresettings" label="Restore Account Data" type="action">
+					<level>0</level>
+					<data>RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/restoresettings/)</data>
+					<constraints>
+						<allowempty>true</allowempty>
+					</constraints>
+					<control format="action" type="button">
+						<close>true</close>
+					</control>
+				</setting>
+			</group>
 		</category>
 		<category help="" id="genres" label="33010">
 			<group id="1">

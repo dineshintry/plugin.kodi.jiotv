@@ -52,6 +52,9 @@ def isLoggedIn(func):
 
     @wraps(func)
     def login_wrapper(*args, **kwargs):
+        # Safety Shield: Try to restore settings if they seem missing
+        restoreSettings()
+        
         with PersistentDict("localdb") as db:
             username = db.get("username")
             password = db.get("password")
@@ -174,6 +177,10 @@ def login(username, password, mode="unpw"):
                 db["exp"] = time.time() + 432000
                 db["username"] = username
                 db["password"] = password
+        
+        # Backup after successful login
+        backupSettings()
+        
         Script.notify("Login Success", "")
         return None
     else:
@@ -405,6 +412,83 @@ def cleanLocalCache():
             del db["dictionary"]
     except:
         Script.notify("Cache", "Cleaned")
+
+
+def backupSettings():
+    """Backup critical user settings to a persistent file to prevent loss during upgrades."""
+    try:
+        profile_path = xbmcvfs.translatePath(Addon().getAddonInfo("profile"))
+        if not os.path.exists(profile_path):
+            os.makedirs(profile_path)
+            
+        backup_file = os.path.join(profile_path, ".userdata.persist")
+        
+        # Collect critical data
+        mobile = Addon().getSetting("mobile")
+        with PersistentDict("localdb") as db:
+            headers = db.get("headers")
+            username = db.get("username")
+            password = db.get("password")
+            
+        data = {
+            "mobile": mobile,
+            "headers": headers,
+            "username": username,
+            "password": password,
+            "timestamp": time.time()
+        }
+        
+        with open(backup_file, "w") as f:
+            json.dump(data, f)
+            
+        Script.log("[SAFETY] User settings backed up successfully", lvl=Script.INFO)
+    except Exception as e:
+        Script.log(f"[SAFETY] Failed to backup settings: {e}", lvl=Script.ERROR)
+
+
+def restoreSettings():
+    """Restore critical user settings from persistent backup if they are missing."""
+    try:
+        addon = Addon()
+        current_mobile = addon.getSetting("mobile")
+        
+        with PersistentDict("localdb") as db:
+            has_headers = "headers" in db
+            
+        # If we have both, no need to restore
+        if current_mobile and has_headers:
+            return
+            
+        profile_path = xbmcvfs.translatePath(addon.getAddonInfo("profile"))
+        backup_file = os.path.join(profile_path, ".userdata.persist")
+        
+        if not os.path.exists(backup_file):
+            return
+            
+        with open(backup_file, "r") as f:
+            data = json.load(f)
+            
+        restored = False
+        
+        # Restore mobile if missing
+        if not current_mobile and data.get("mobile"):
+            addon.setSetting("mobile", data["mobile"])
+            restored = True
+            
+        # Restore headers/credentials if missing
+        with PersistentDict("localdb") as db:
+            if not "headers" in db and data.get("headers"):
+                db["headers"] = data["headers"]
+                if data.get("username"): db["username"] = data["username"]
+                if data.get("password"): db["password"] = data["password"]
+                restored = True
+                
+        if restored:
+            Script.log("[SAFETY] User settings restored from persistent backup", lvl=Script.INFO)
+            Script.notify("JioTV", "Settings restored from backup")
+            
+    except Exception as e:
+        Script.log(f"[SAFETY] Failed to restore settings: {e}", lvl=Script.ERROR)
 
 
 def getChannelHeaders():

@@ -1,0 +1,548 @@
+﻿2026-03-15 13:35:47.642 T:23520    info <general>: -----------------------------------------------------------------------
+2026-03-15 13:35:47.642 T:23520    info <general>: Starting Kodi (21.3 (21.3.0) Git:20251031-a3a448d26b). Platform: Windows NT x86 64-bit
+2026-03-15 13:35:47.642 T:23520    info <general>: Using Release Kodi x64
+2026-03-15 13:35:47.642 T:23520    info <general>: Kodi compiled 2025-11-23 by MSVC 194234436 for Windows NT x86 64-bit version 10.0 (0x0A00000C)
+2026-03-15 13:35:47.642 T:23520    info <general>: Running on Windows 11 25H2, kernel: Windows NT x86 64-bit version 10.0.26200.8037
+2026-03-15 13:35:47.642 T:23520    info <general>: FFmpeg version/source: 6.0.1-Kodi
+2026-03-15 13:35:47.643 T:23520    info <general>: Host CPU: 13th Gen Intel(R) Core(TM) i5-13420H, 12 cores available
+2026-03-15 13:35:47.643 T:23520    info <general>: System has 16.0 GB of RAM installed
+2026-03-15 13:35:47.643 T:23520    info <general>: Desktop Resolution: 3840x2160 32Bit at 60Hz
+2026-03-15 13:35:47.644 T:23520    info <general>: Running with restricted rights
+2026-03-15 13:35:47.644 T:23520    info <general>: Aero is enabled
+2026-03-15 13:35:47.644 T:23520    info <general>: Display HDR capable is detected and Windows HDR switch is OFF
+2026-03-15 13:35:47.644 T:23520    info <general>: special://xbmc/ is mapped to: C:\Program Files\Kodi
+2026-03-15 13:35:47.644 T:23520    info <general>: special://xbmcbin/ is mapped to: C:\Program Files\Kodi
+2026-03-15 13:35:47.644 T:23520    info <general>: special://xbmcbinaddons/ is mapped to: C:\Program Files\Kodi/addons
+2026-03-15 13:35:47.644 T:23520    info <general>: special://masterprofile/ is mapped to: C:\Users\dines\AppData\Roaming\Kodi\userdata
+2026-03-15 13:35:47.644 T:23520    info <general>: special://home/ is mapped to: C:\Users\dines\AppData\Roaming\Kodi\
+2026-03-15 13:35:47.644 T:23520    info <general>: special://temp/ is mapped to: C:\Users\dines\AppData\Roaming\Kodi\cache
+2026-03-15 13:35:47.644 T:23520    info <general>: special://logpath/ is mapped to: C:\Users\dines\AppData\Roaming\Kodi\
+2026-03-15 13:35:47.644 T:23520    info <general>: Webserver extra whitelist paths: 
+2026-03-15 13:35:47.644 T:23520    info <general>: The executable running is: C:\Program Files\Kodi\kodi.exe
+2026-03-15 13:35:47.645 T:23520    info <general>: Local hostname: Dinesh
+2026-03-15 13:35:47.645 T:23520    info <general>: Log File is located: C:\Users\dines\AppData\Roaming\Kodi\kodi.log
+2026-03-15 13:35:47.645 T:23520    info <general>: -----------------------------------------------------------------------
+2026-03-15 13:35:47.646 T:23520    info <general>: loading settings
+2026-03-15 13:35:47.646 T:23520    info <general>: special://profile/ is mapped to: special://masterprofile/
+2026-03-15 13:35:47.650 T:23520    info <general>: No settings file to load (special://xbmc/system/advancedsettings.xml)
+2026-03-15 13:35:47.650 T:23520    info <general>: No settings file to load (special://masterprofile/advancedsettings.xml)
+2026-03-15 13:35:47.650 T:23520    info <general>: Default Video Player: VideoPlayer
+2026-03-15 13:35:47.650 T:23520    info <general>: Default Audio Player: paplayer
+2026-03-15 13:35:47.650 T:23520    info <general>: Disabled debug logging due to GUI setting. Level 0.
+2026-03-15 13:35:47.650 T:23520    info <general>: Log level changed to "info"
+2026-03-15 13:35:47.650 T:23520    info <general>: CMediaSourceSettings: loading media sources from special://masterprofile/sources.xml
+2026-03-15 13:35:47.651 T:23520    info <general>: New Cache GUI Settings (replacement of cache in advancedsettings.xml) are:
+                                                     Buffer Mode: 4
+                                                     Memory Size: 20 MB
+                                                     Read Factor: 4.00 x 
+                                                     Chunk Size : 131072 bytes
+2026-03-15 13:35:47.651 T:23520    info <general>: creating subdirectories
+2026-03-15 13:35:47.651 T:23520    info <general>: userdata folder: special://masterprofile/
+2026-03-15 13:35:47.651 T:23520    info <general>: recording folder: 
+2026-03-15 13:35:47.651 T:23520    info <general>: screenshots folder: 
+2026-03-15 13:35:47.654 T:23520    info <general>: Running database version Addons33
+2026-03-15 13:35:47.678 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: audioencoder.kodi.builtin.aac v1.0.2 installed
+2026-03-15 13:35:47.678 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: audioencoder.kodi.builtin.wma v1.0.2 installed
+2026-03-15 13:35:47.678 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: game.controller.default v1.0.46 installed
+2026-03-15 13:35:47.678 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: game.controller.keyboard v1.1.47 installed
+2026-03-15 13:35:47.679 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: game.controller.mouse v1.0.30 installed
+2026-03-15 13:35:47.679 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: game.controller.snes v1.0.46 installed
+2026-03-15 13:35:47.679 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: inputstream.adaptive v21.5.18 installed
+2026-03-15 13:35:47.679 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: inputstream.ffmpegdirect v21.3.8 installed
+2026-03-15 13:35:47.679 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: inputstream.rtmp v21.1.2 installed
+2026-03-15 13:35:47.679 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: kodi.binary.global.audioengine v1.1.1 installed
+2026-03-15 13:35:47.679 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: kodi.binary.global.filesystem v1.1.9 installed
+2026-03-15 13:35:47.679 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: kodi.binary.global.general v1.0.5 installed
+2026-03-15 13:35:47.679 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: kodi.binary.global.gui v5.15.0 installed
+2026-03-15 13:35:47.679 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: kodi.binary.global.main v2.0.2 installed
+2026-03-15 13:35:47.679 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: kodi.binary.global.network v1.0.4 installed
+2026-03-15 13:35:47.679 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: kodi.binary.global.tools v1.0.4 installed
+2026-03-15 13:35:47.679 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: kodi.binary.instance.audiodecoder v4.0.0 installed
+2026-03-15 13:35:47.679 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: kodi.binary.instance.audioencoder v3.0.0 installed
+2026-03-15 13:35:47.679 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: kodi.binary.instance.game v3.0.2 installed
+2026-03-15 13:35:47.679 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: kodi.binary.instance.imagedecoder v3.0.1 installed
+2026-03-15 13:35:47.679 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: kodi.binary.instance.inputstream v3.3.0 installed
+2026-03-15 13:35:47.679 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: kodi.binary.instance.peripheral v3.0.2 installed
+2026-03-15 13:35:47.679 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: kodi.binary.instance.pvr v8.3.0 installed
+2026-03-15 13:35:47.679 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: kodi.binary.instance.screensaver v2.2.0 installed
+2026-03-15 13:35:47.680 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: kodi.binary.instance.vfs v3.0.1 installed
+2026-03-15 13:35:47.680 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: kodi.binary.instance.videocodec v2.1.0 installed
+2026-03-15 13:35:47.680 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: kodi.binary.instance.visualization v4.0.0 installed
+2026-03-15 13:35:47.680 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: kodi.resource v1.0.0 installed
+2026-03-15 13:35:47.680 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: metadata.album.universal v3.1.18 installed
+2026-03-15 13:35:47.680 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: metadata.artists.universal v4.3.21 installed
+2026-03-15 13:35:47.680 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: metadata.common.allmusic.com v3.2.2 installed
+2026-03-15 13:35:47.680 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: metadata.common.fanart.tv v3.6.5 installed
+2026-03-15 13:35:47.680 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: metadata.common.musicbrainz.org v2.2.4 installed
+2026-03-15 13:35:47.680 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: metadata.common.theaudiodb.com v2.0.3 installed
+2026-03-15 13:35:47.680 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: metadata.generic.albums v1.0.18 installed
+2026-03-15 13:35:47.680 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: metadata.generic.artists v1.0.18 installed
+2026-03-15 13:35:47.680 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: metadata.local v1.0.1 installed
+2026-03-15 13:35:47.680 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: metadata.themoviedb.org.python v3.1.3 installed
+2026-03-15 13:35:47.680 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: metadata.tvshows.themoviedb.org.python v1.7.4 installed
+2026-03-15 13:35:47.680 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: peripheral.joystick v21.1.23 installed
+2026-03-15 13:35:47.680 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: pvr.iptvsimple v21.11.0 installed
+2026-03-15 13:35:47.680 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: repository.jiotvdirect v1.0.0 installed
+2026-03-15 13:35:47.680 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: repository.xbmc.org v3.4.0 installed
+2026-03-15 13:35:47.680 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: resource.images.weathericons.default v1.1.9 installed
+2026-03-15 13:35:47.680 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: resource.language.en_gb v2.0.2 installed
+2026-03-15 13:35:47.680 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: resource.uisounds.kodi v1.0.1 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: screensaver.xbmc.builtin.black v1.0.34 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: screensaver.xbmc.builtin.dim v1.0.66 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: script.module.addon.signals v0.0.6+matrix.1 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: script.module.certifi v2023.5.7 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: script.module.chardet v5.1.0 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: script.module.codequick v1.0.3+matrix.1 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: script.module.htmlement v1.0.0+matrix.1 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: script.module.idna v3.10.0 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: script.module.inputstreamhelper v0.8.5 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: script.module.iso8601 v2.0.0 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: script.module.kodi-six v0.1.3.1 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: script.module.m3u8 v3.5.0 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: script.module.pil v5.1.0 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: script.module.pycryptodome v3.4.3 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: script.module.requests v2.31.0 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: script.module.urllib3 v2.2.3 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: script.module.youtube.dl v25.11.30+matrix.1 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: service.xbmc.versioncheck v0.5.30+matrix.1 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: skin.estuary v4.0.0 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: webinterface.default v21.x-1.0.1 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: xbmc.addon v21.3.0 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: xbmc.core v0.1.0 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: xbmc.gui v5.17.0 installed
+2026-03-15 13:35:47.681 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: xbmc.json v13.5.0 installed
+2026-03-15 13:35:47.682 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: xbmc.metadata v2.1.0 installed
+2026-03-15 13:35:47.682 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: xbmc.python v3.0.1 installed
+2026-03-15 13:35:47.682 T:23520    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddons: xbmc.webinterface v1.0.0 installed
+2026-03-15 13:35:47.684 T:23520    info <general>: CKeyboardLayoutManager: loading keyboard layouts from special://xbmc/system/keyboardlayouts...
+2026-03-15 13:35:47.689 T:15524    info <general>: Loading special://xbmc/system/IRSSmap.xml
+2026-03-15 13:35:47.689 T:15524    info <general>: * Adding remote mapping for device 'Microsoft MCE'
+2026-03-15 13:35:47.689 T:15524    info <general>: * Adding remote mapping for device 'Abstract'
+2026-03-15 13:35:47.690 T:23520    info <general>: Primary mode: Generic PnP Monitor #1: 1920x1080 @ 60.00Hz
+2026-03-15 13:35:47.691 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1920x1080 @ 165.00Hz
+2026-03-15 13:35:47.691 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1920x1080 @ 120.00Hz
+2026-03-15 13:35:47.691 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1920x1080 @ 100.00Hz
+2026-03-15 13:35:47.691 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1920x1080 @ 75.00Hz
+2026-03-15 13:35:47.691 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1920x1080 @ 60.00Hz
+2026-03-15 13:35:47.691 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1920x1080 @ 48.00Hz
+2026-03-15 13:35:47.691 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 640x480 @ 165.00Hz
+2026-03-15 13:35:47.692 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 640x480 @ 120.00Hz
+2026-03-15 13:35:47.692 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 640x480 @ 100.00Hz
+2026-03-15 13:35:47.692 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 640x480 @ 75.00Hz
+2026-03-15 13:35:47.692 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 640x480 @ 60.00Hz
+2026-03-15 13:35:47.692 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 640x480 @ 48.00Hz
+2026-03-15 13:35:47.692 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 800x600 @ 165.00Hz
+2026-03-15 13:35:47.692 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 800x600 @ 120.00Hz
+2026-03-15 13:35:47.692 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 800x600 @ 100.00Hz
+2026-03-15 13:35:47.692 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 800x600 @ 75.00Hz
+2026-03-15 13:35:47.692 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 800x600 @ 60.00Hz
+2026-03-15 13:35:47.693 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 800x600 @ 48.00Hz
+2026-03-15 13:35:47.693 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1024x768 @ 165.00Hz
+2026-03-15 13:35:47.693 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1024x768 @ 120.00Hz
+2026-03-15 13:35:47.693 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1024x768 @ 100.00Hz
+2026-03-15 13:35:47.693 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1024x768 @ 75.00Hz
+2026-03-15 13:35:47.693 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1024x768 @ 60.00Hz
+2026-03-15 13:35:47.693 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1024x768 @ 48.00Hz
+2026-03-15 13:35:47.694 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1152x864 @ 165.00Hz
+2026-03-15 13:35:47.694 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1152x864 @ 120.00Hz
+2026-03-15 13:35:47.694 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1152x864 @ 100.00Hz
+2026-03-15 13:35:47.694 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1152x864 @ 75.00Hz
+2026-03-15 13:35:47.694 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1152x864 @ 60.00Hz
+2026-03-15 13:35:47.695 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1152x864 @ 48.00Hz
+2026-03-15 13:35:47.695 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x600 @ 165.00Hz
+2026-03-15 13:35:47.695 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x600 @ 120.00Hz
+2026-03-15 13:35:47.695 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x600 @ 100.00Hz
+2026-03-15 13:35:47.696 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x600 @ 75.00Hz
+2026-03-15 13:35:47.696 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x600 @ 60.00Hz
+2026-03-15 13:35:47.696 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x600 @ 48.00Hz
+2026-03-15 13:35:47.698 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x720 @ 165.00Hz
+2026-03-15 13:35:47.698 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x720 @ 120.00Hz
+2026-03-15 13:35:47.698 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x720 @ 100.00Hz
+2026-03-15 13:35:47.699 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x720 @ 75.00Hz
+2026-03-15 13:35:47.699 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x720 @ 60.00Hz
+2026-03-15 13:35:47.699 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x720 @ 48.00Hz
+2026-03-15 13:35:47.700 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x768 @ 165.00Hz
+2026-03-15 13:35:47.701 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x768 @ 120.00Hz
+2026-03-15 13:35:47.701 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x768 @ 100.00Hz
+2026-03-15 13:35:47.701 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x768 @ 75.00Hz
+2026-03-15 13:35:47.702 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x768 @ 60.00Hz
+2026-03-15 13:35:47.702 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x768 @ 48.00Hz
+2026-03-15 13:35:47.703 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x800 @ 165.00Hz
+2026-03-15 13:35:47.703 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x800 @ 120.00Hz
+2026-03-15 13:35:47.703 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x800 @ 100.00Hz
+2026-03-15 13:35:47.703 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x800 @ 75.00Hz
+2026-03-15 13:35:47.703 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x800 @ 60.00Hz
+2026-03-15 13:35:47.704 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x800 @ 48.00Hz
+2026-03-15 13:35:47.704 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x960 @ 165.00Hz
+2026-03-15 13:35:47.704 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x960 @ 120.00Hz
+2026-03-15 13:35:47.704 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x960 @ 100.00Hz
+2026-03-15 13:35:47.705 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x960 @ 75.00Hz
+2026-03-15 13:35:47.705 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x960 @ 60.00Hz
+2026-03-15 13:35:47.705 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x960 @ 48.00Hz
+2026-03-15 13:35:47.706 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x1024 @ 165.00Hz
+2026-03-15 13:35:47.706 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x1024 @ 120.00Hz
+2026-03-15 13:35:47.706 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x1024 @ 100.00Hz
+2026-03-15 13:35:47.706 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x1024 @ 75.00Hz
+2026-03-15 13:35:47.706 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x1024 @ 60.00Hz
+2026-03-15 13:35:47.706 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1280x1024 @ 48.00Hz
+2026-03-15 13:35:47.707 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1360x768 @ 165.00Hz
+2026-03-15 13:35:47.707 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1360x768 @ 120.00Hz
+2026-03-15 13:35:47.708 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1360x768 @ 100.00Hz
+2026-03-15 13:35:47.708 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1360x768 @ 75.00Hz
+2026-03-15 13:35:47.708 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1360x768 @ 60.00Hz
+2026-03-15 13:35:47.708 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1360x768 @ 48.00Hz
+2026-03-15 13:35:47.709 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1366x768 @ 165.00Hz
+2026-03-15 13:35:47.709 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1366x768 @ 120.00Hz
+2026-03-15 13:35:47.709 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1366x768 @ 100.00Hz
+2026-03-15 13:35:47.709 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1366x768 @ 75.00Hz
+2026-03-15 13:35:47.709 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1366x768 @ 60.00Hz
+2026-03-15 13:35:47.709 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1366x768 @ 48.00Hz
+2026-03-15 13:35:47.710 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1400x1050 @ 165.00Hz
+2026-03-15 13:35:47.710 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1400x1050 @ 120.00Hz
+2026-03-15 13:35:47.710 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1400x1050 @ 100.00Hz
+2026-03-15 13:35:47.710 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1400x1050 @ 75.00Hz
+2026-03-15 13:35:47.711 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1400x1050 @ 60.00Hz
+2026-03-15 13:35:47.711 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1400x1050 @ 48.00Hz
+2026-03-15 13:35:47.711 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1440x900 @ 165.00Hz
+2026-03-15 13:35:47.712 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1440x900 @ 120.00Hz
+2026-03-15 13:35:47.712 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1440x900 @ 100.00Hz
+2026-03-15 13:35:47.712 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1440x900 @ 75.00Hz
+2026-03-15 13:35:47.712 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1440x900 @ 60.00Hz
+2026-03-15 13:35:47.712 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1440x900 @ 48.00Hz
+2026-03-15 13:35:47.713 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1600x900 @ 165.00Hz
+2026-03-15 13:35:47.713 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1600x900 @ 120.00Hz
+2026-03-15 13:35:47.713 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1600x900 @ 100.00Hz
+2026-03-15 13:35:47.713 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1600x900 @ 75.00Hz
+2026-03-15 13:35:47.714 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1600x900 @ 60.00Hz
+2026-03-15 13:35:47.714 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1600x900 @ 48.00Hz
+2026-03-15 13:35:47.715 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1680x1050 @ 165.00Hz
+2026-03-15 13:35:47.715 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1680x1050 @ 120.00Hz
+2026-03-15 13:35:47.715 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1680x1050 @ 100.00Hz
+2026-03-15 13:35:47.715 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1680x1050 @ 75.00Hz
+2026-03-15 13:35:47.715 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1680x1050 @ 60.00Hz
+2026-03-15 13:35:47.715 T:23520    info <general>: Additional mode: Generic PnP Monitor #1: 1680x1050 @ 48.00Hz
+2026-03-15 13:35:47.716 T:23520    info <general>: CApplication::CApplication::CreateGUI - using the default windowing system
+2026-03-15 13:35:47.716 T:23520    info <general>: Checking resolution 16
+2026-03-15 13:35:47.780 T:23520    info <general>: DX::DeviceResources::CheckNV12SharedTexturesSupport: extended NV12 shared textures is supported
+2026-03-15 13:35:47.780 T:23520    info <general>: DX::DeviceResources::CreateDeviceResources: device is created on adapter 'Intel(R) UHD Graphics' with D3D_FEATURE_LEVEL_12_1
+2026-03-15 13:35:47.780 T:23520    info <general>: VideoDriverInfo::Log: video driver version is Intel 32.0.101.6874
+2026-03-15 13:35:47.780 T:23520    info <general>: DX::DeviceResources::CheckDXVA2SharedDecoderSurfaces: DXVA2 shared decoder surfaces is supported
+2026-03-15 13:35:47.780 T:23520    info <general>: DX::DeviceResources::CheckDXVA2SharedDecoderSurfaces: DXVA2 shared decoder surfaces WITHOUT fence synchronization.
+2026-03-15 13:35:47.780 T:23520    info <general>: DX::DeviceResources::CheckDXVA2SharedDecoderSurfaces: DXVA Video Super Resolution is potentially supported
+2026-03-15 13:35:47.786 T:23520    info <general>: DX::DeviceResources::ResizeBuffers: 8 bit swapchain is used with 6 flip discard buffers and SDR output (format B8G8R8A8_UNORM)
+2026-03-15 13:35:47.807 T:23520    info <general>: RetroPlayer[RENDER]: Registering renderer factory for DirectX
+2026-03-15 13:35:47.847 T:23520    info <general>: load keymapping
+2026-03-15 13:35:47.849 T:23520    info <general>: Loading special://xbmc/system/keymaps/appcommand.xml
+2026-03-15 13:35:47.849 T:23520    info <general>: Loading special://xbmc/system/keymaps/customcontroller.AppleRemote.xml
+2026-03-15 13:35:47.850 T:23520    info <general>: Loading special://xbmc/system/keymaps/customcontroller.Harmony.xml
+2026-03-15 13:35:47.850 T:23520    info <general>: Loading special://xbmc/system/keymaps/customcontroller.SiriRemote.xml
+2026-03-15 13:35:47.850 T:23520    info <general>: Loading special://xbmc/system/keymaps/gamepad.xml
+2026-03-15 13:35:47.851 T:23520    info <general>: Loading special://xbmc/system/keymaps/joystick.xml
+2026-03-15 13:35:47.851 T:23520    info <general>: Loading special://xbmc/system/keymaps/keyboard.xml
+2026-03-15 13:35:47.852 T:23520    info <general>: Loading special://xbmc/system/keymaps/mouse.xml
+2026-03-15 13:35:47.852 T:23520    info <general>: Loading special://xbmc/system/keymaps/remote.xml
+2026-03-15 13:35:47.852 T:23520    info <general>: Loading special://xbmc/system/keymaps/touchscreen.xml
+2026-03-15 13:35:47.853 T:23520    info <general>: GUI format 1920x1080, Display Generic PnP Monitor #1: 1920x1080 @ 60.00Hz
+2026-03-15 13:35:47.862 T:4672     info <general>: CAESinkWASAPI::EnumerateDevicesEx: stream type "STREAM_TYPE_DTSHD" on device "SA322QK (HD Audio Driver for Display Audio)" seems to be not supported.
+2026-03-15 13:35:47.862 T:4672     info <general>: CAESinkWASAPI::EnumerateDevicesEx: stream type "STREAM_TYPE_DTSHD_MA" on device "SA322QK (HD Audio Driver for Display Audio)" seems to be not supported.
+2026-03-15 13:35:47.863 T:4672     info <general>: CAESinkWASAPI::EnumerateDevicesEx: stream type "STREAM_TYPE_TRUEHD" on device "SA322QK (HD Audio Driver for Display Audio)" seems to be not supported.
+2026-03-15 13:35:47.863 T:4672     info <general>: CAESinkWASAPI::EnumerateDevicesEx: stream type "STREAM_TYPE_EAC3" on device "SA322QK (HD Audio Driver for Display Audio)" seems to be not supported.
+2026-03-15 13:35:47.863 T:4672     info <general>: CAESinkWASAPI::EnumerateDevicesEx: stream type "STREAM_TYPE_DTS" on device "SA322QK (HD Audio Driver for Display Audio)" seems to be not supported.
+2026-03-15 13:35:47.863 T:4672     info <general>: CAESinkWASAPI::EnumerateDevicesEx: stream type "STREAM_TYPE_AC3" on device "SA322QK (HD Audio Driver for Display Audio)" seems to be not supported.
+2026-03-15 13:35:47.868 T:4672     info <general>: CAESinkWASAPI::EnumerateDevicesEx: sample rate 192khz on device "Headphones (G522 LIGHTSPEED - Wireless Mode)" seems to be not supported.
+2026-03-15 13:35:48.037 T:4672     info <general>: Found 2 Lists of Devices
+2026-03-15 13:35:48.037 T:4672     info <general>: Enumerated DIRECTSOUND devices:
+2026-03-15 13:35:48.037 T:4672     info <general>:     Device 1
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_deviceName      : {C6D4C441-E58C-453E-8A20-9F793300115D}
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_displayName     : HDMI - SA322QK (HD Audio Driver for Display Audio)
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_displayNameExtra: DIRECTSOUND: SA322QK (HD Audio Driver for Display Audio)
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_deviceType      : AE_DEVTYPE_HDMI
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_channels        : FL, FR
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_sampleRates     : 48000
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_dataFormats     : AE_FMT_FLOAT,AE_FMT_RAW
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_streamTypes     : STREAM_TYPE_AC3,STREAM_TYPE_DTSHD_CORE,STREAM_TYPE_DTS_1024,STREAM_TYPE_DTS_2048,STREAM_TYPE_DTS_512
+2026-03-15 13:35:48.037 T:4672     info <general>:     Device 2
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_deviceName      : {E7BC4CB3-2681-4063-BE66-01FADE3AF1E8}
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_displayName     : Headphones - Headphones (G522 LIGHTSPEED - Wireless Mode)
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_displayNameExtra: DIRECTSOUND: Headphones (G522 LIGHTSPEED - Wireless Mode)
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_deviceType      : AE_DEVTYPE_PCM
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_channels        : FL, FR
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_sampleRates     : 48000
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_dataFormats     : AE_FMT_FLOAT
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_streamTypes     : STREAM_TYPE_AC3,STREAM_TYPE_DTSHD_CORE,STREAM_TYPE_DTS_1024,STREAM_TYPE_DTS_2048,STREAM_TYPE_DTS_512
+2026-03-15 13:35:48.037 T:4672     info <general>:     Device 3
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_deviceName      : {EC116F70-4108-44CB-9B12-B7A475645A3C}
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_displayName     : Speakers - Speakers (Realtek(R) Audio)
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_displayNameExtra: DIRECTSOUND: Speakers (Realtek(R) Audio)
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_deviceType      : AE_DEVTYPE_PCM
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_channels        : FL, FR
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_sampleRates     : 48000
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_dataFormats     : AE_FMT_FLOAT
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_streamTypes     : STREAM_TYPE_AC3,STREAM_TYPE_DTSHD_CORE,STREAM_TYPE_DTS_1024,STREAM_TYPE_DTS_2048,STREAM_TYPE_DTS_512
+2026-03-15 13:35:48.037 T:4672     info <general>:     Device 4
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_deviceName      : default
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_displayName     : default
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_displayNameExtra: 
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_deviceType      : AE_DEVTYPE_PCM
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_channels        : FL, FR
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_sampleRates     : 48000
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_dataFormats     : AE_FMT_FLOAT
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_streamTypes     : STREAM_TYPE_AC3,STREAM_TYPE_DTSHD_CORE,STREAM_TYPE_DTS_1024,STREAM_TYPE_DTS_2048,STREAM_TYPE_DTS_512
+2026-03-15 13:35:48.037 T:4672     info <general>: Enumerated WASAPI devices:
+2026-03-15 13:35:48.037 T:4672     info <general>:     Device 1
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_deviceName      : {C6D4C441-E58C-453E-8A20-9F793300115D}
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_displayName     : HDMI - SA322QK (HD Audio Driver for Display Audio)
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_displayNameExtra: WASAPI: SA322QK (HD Audio Driver for Display Audio)
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_deviceType      : AE_DEVTYPE_HDMI
+2026-03-15 13:35:48.037 T:4672     info <general>:         m_channels        : FL, FR
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_sampleRates     : 192000,176400,96000,88200,48000,44100,32000
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_dataFormats     : AE_FMT_S24NE4MSB,AE_FMT_S16NE,AE_FMT_S16LE,AE_FMT_S16BE,AE_FMT_RAW
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_streamTypes     : STREAM_TYPE_DTSHD,STREAM_TYPE_DTSHD_MA,STREAM_TYPE_TRUEHD,STREAM_TYPE_EAC3,STREAM_TYPE_DTSHD_CORE,STREAM_TYPE_DTS_2048,STREAM_TYPE_DTS_1024,STREAM_TYPE_DTS_512,STREAM_TYPE_AC3
+2026-03-15 13:35:48.038 T:4672     info <general>:     Device 2
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_deviceName      : {E7BC4CB3-2681-4063-BE66-01FADE3AF1E8}
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_displayName     : Headphones - Headphones (G522 LIGHTSPEED - Wireless Mode)
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_displayNameExtra: WASAPI: Headphones (G522 LIGHTSPEED - Wireless Mode)
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_deviceType      : AE_DEVTYPE_PCM
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_channels        : FL, FR
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_sampleRates     : 192000,48000
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_dataFormats     : AE_FMT_S24NE3,AE_FMT_S24LE3,AE_FMT_S24BE3,AE_FMT_S16NE,AE_FMT_S16LE,AE_FMT_S16BE,AE_FMT_RAW
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_streamTypes     : STREAM_TYPE_DTSHD,STREAM_TYPE_DTSHD_MA,STREAM_TYPE_TRUEHD,STREAM_TYPE_EAC3,STREAM_TYPE_DTSHD_CORE,STREAM_TYPE_DTS_2048,STREAM_TYPE_DTS_1024,STREAM_TYPE_DTS_512,STREAM_TYPE_AC3
+2026-03-15 13:35:48.038 T:4672     info <general>:     Device 3
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_deviceName      : {EC116F70-4108-44CB-9B12-B7A475645A3C}
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_displayName     : Speakers - Speakers (Realtek(R) Audio)
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_displayNameExtra: WASAPI: Speakers (Realtek(R) Audio)
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_deviceType      : AE_DEVTYPE_PCM
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_channels        : FL, FR
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_sampleRates     : 192000,176400,96000,88200,48000,44100,32000,22050,11025
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_dataFormats     : AE_FMT_S24NE3,AE_FMT_S24LE3,AE_FMT_S24BE3,AE_FMT_S24NE4MSB,AE_FMT_S16NE,AE_FMT_S16LE,AE_FMT_S16BE,AE_FMT_U8,AE_FMT_RAW
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_streamTypes     : STREAM_TYPE_DTSHD,STREAM_TYPE_DTSHD_MA,STREAM_TYPE_TRUEHD,STREAM_TYPE_EAC3,STREAM_TYPE_DTSHD_CORE,STREAM_TYPE_DTS_2048,STREAM_TYPE_DTS_1024,STREAM_TYPE_DTS_512,STREAM_TYPE_AC3
+2026-03-15 13:35:48.038 T:4672     info <general>:     Device 4
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_deviceName      : default
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_displayName     : default
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_displayNameExtra: 
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_deviceType      : AE_DEVTYPE_PCM
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_channels        : FL, FR
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_sampleRates     : 192000,176400,96000,88200,48000,44100,32000,22050,11025
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_dataFormats     : AE_FMT_S24NE3,AE_FMT_S24LE3,AE_FMT_S24BE3,AE_FMT_S24NE4MSB,AE_FMT_S16NE,AE_FMT_S16LE,AE_FMT_S16BE,AE_FMT_U8,AE_FMT_RAW
+2026-03-15 13:35:48.038 T:4672     info <general>:         m_streamTypes     : STREAM_TYPE_DTSHD,STREAM_TYPE_DTSHD_MA,STREAM_TYPE_TRUEHD,STREAM_TYPE_EAC3,STREAM_TYPE_DTSHD_CORE,STREAM_TYPE_DTS_2048,STREAM_TYPE_DTS_1024,STREAM_TYPE_DTS_512,STREAM_TYPE_AC3
+2026-03-15 13:35:48.038 T:19880    info <general>: CActiveAESink::OpenSink - initialize sink
+2026-03-15 13:35:48.062 T:4672  warning <general>: CActiveAE::ActiveAE::CActiveAE::StateMachine - signal: 0 from port: OutputControlPort not handled for state: 7
+2026-03-15 13:35:48.063 T:23520    info <general>: CLangInfo: loading resource.language.en_gb language information...
+2026-03-15 13:35:48.063 T:4672  warning <general>: CActiveAE::ActiveAE::CActiveAE::StateMachine - signal: 0 from port: OutputControlPort not handled for state: 7
+2026-03-15 13:35:48.076 T:23520    info <general>: global locale set to en-us
+2026-03-15 13:35:48.076 T:23520    info <general>: CLangInfo: loading resource.language.en_gb language strings...
+2026-03-15 13:35:48.086 T:11888    info <general>: Running database version Addons33
+2026-03-15 13:35:48.087 T:11888    info <general>: Running database version ViewModes6
+2026-03-15 13:35:48.087 T:11888    info <general>: Running database version Textures13
+2026-03-15 13:35:48.088 T:11888    info <general>: Running database version MyMusic83
+2026-03-15 13:35:48.089 T:11888    info <general>: Running database version MyVideos131
+2026-03-15 13:35:48.089 T:11888    info <general>: Running database version TV46
+2026-03-15 13:35:48.089 T:11888    info <general>: Running database version Epg16
+2026-03-15 13:35:48.126 T:23520    info <general>: Unloaded skin
+2026-03-15 13:35:48.127 T:23520    info <general>:   load skin from: C:\Program Files\Kodi\addons\skin.estuary\ (version: 4.0.0)
+2026-03-15 13:35:48.128 T:23520    info <general>:   load fonts for skin...
+2026-03-15 13:35:48.129 T:23520    info <general>: Loading skin includes from C:\Program Files\Kodi\addons\skin.estuary\xml\Includes.xml
+2026-03-15 13:35:48.148 T:23520    info <general>: GUIFontManager::LoadFontsFromFile: Loading <fontset> with name 'Default' from 'C:\Program Files\Kodi\addons\skin.estuary\xml\Font.xml'
+2026-03-15 13:35:48.156 T:23520    info <general>: ADDON::CSkinInfo::LoadTimers: Trying to load skin timers from C:\Program Files\Kodi\addons\skin.estuary\xml\Timers.xml
+2026-03-15 13:35:48.156 T:23520    info <general>:   load new skin...
+2026-03-15 13:35:48.156 T:23520    info <general>: Loading custom window XMLs from skin path C:\Program Files\Kodi\addons\skin.estuary\xml
+2026-03-15 13:35:48.158 T:23520    info <general>:   initialize new skin...
+2026-03-15 13:35:48.158 T:23520    info <general>: Loading skin file: DialogBusy.xml, load type: LOAD_ON_GUI_INIT
+2026-03-15 13:35:48.159 T:23520    info <general>: Loading skin file: Pointer.xml, load type: LOAD_ON_GUI_INIT
+2026-03-15 13:35:48.160 T:23520    info <general>: Loading skin file: DialogVolumeBar.xml, load type: LOAD_ON_GUI_INIT
+2026-03-15 13:35:48.160 T:23520    info <general>: Loading skin file: DialogExtendedProgressBar.xml, load type: LOAD_ON_GUI_INIT
+2026-03-15 13:35:48.161 T:23520    info <general>: Loading skin file: DialogSeekBar.xml, load type: LOAD_ON_GUI_INIT
+2026-03-15 13:35:48.166 T:23520    info <general>: Loading skin file: DialogNotification.xml, load type: LOAD_ON_GUI_INIT
+2026-03-15 13:35:48.166 T:23520    info <general>: Loading skin file: DialogBusy.xml, load type: LOAD_ON_GUI_INIT
+2026-03-15 13:35:48.166 T:23520    info <general>: Loading skin file: Custom_1109_TopBarOverlay.xml, load type: LOAD_ON_GUI_INIT
+2026-03-15 13:35:48.168 T:23520    info <general>: Loading resource://resource.uisounds.kodi/sounds.xml
+2026-03-15 13:35:48.175 T:23520    info <general>:   skin loaded...
+2026-03-15 13:35:48.175 T:23520    info <general>: Loading skin file: Startup.xml, load type: LOAD_EVERY_TIME
+2026-03-15 13:35:48.176 T:23520    info <general>: Loading skin file: Home.xml, load type: KEEP_IN_MEMORY
+2026-03-15 13:35:48.201 T:23520 warning <general>: JSONRPC: Could not parse type "Setting.Details.SettingList"
+2026-03-15 13:35:48.201 T:23520    info <general>: JSONRPC: Adding type "Setting.Details.SettingList" to list of incomplete definitions (waiting for "Setting.Details.Setting")
+2026-03-15 13:35:48.202 T:23520    info <general>: JSONRPC: Resolving incomplete types/methods referencing Setting.Details.Setting
+2026-03-15 13:35:48.206 T:23520    info <general>: JSONRPC v13.5.0: Successfully initialized
+2026-03-15 13:35:48.209 T:23520    info <general>: AddOnLog: peripheral.joystick: Enabling joystick interface "xinput"
+2026-03-15 13:35:48.210 T:23520    info <general>: AddOnLog: peripheral.joystick: Enabling joystick interface "directinput"
+2026-03-15 13:35:48.212 T:23520    info <general>: PERIPHERALS::CPeripheralBus::Register - new keyboard device registered on application->keyboard: Keyboard (0000:0000)
+2026-03-15 13:35:48.212 T:23520    info <general>: PERIPHERALS::CPeripheralBus::Register - new mouse device registered on application->mouse: Mouse (0000:0000)
+2026-03-15 13:35:48.215 T:23520    info <general>: Loading player core factory settings from special://xbmc/system/playercorefactory.xml.
+2026-03-15 13:35:48.216 T:23520    info <general>: Loaded playercorefactory configuration
+2026-03-15 13:35:48.216 T:23520    info <general>: Loading player core factory settings from special://masterprofile/playercorefactory.xml.
+2026-03-15 13:35:48.216 T:23520    info <general>: special://masterprofile/playercorefactory.xml does not exist. Skipping.
+2026-03-15 13:35:48.216 T:23520    info <general>: removing tempfiles
+2026-03-15 13:35:48.217 T:23520    info <general>: initialize done
+2026-03-15 13:35:48.217 T:23520    info <general>: Running the application...
+2026-03-15 13:35:48.218 T:11844    info <general>: ES: Starting UDP Event server on port 9777
+2026-03-15 13:35:48.219 T:11844    info <general>: UDP: Listening on port 9777 (ipv6 : false)
+2026-03-15 13:35:48.219 T:23520    info <general>: JSONRPC Server: Successfully initialized
+2026-03-15 13:35:48.221 T:2720     info <general>: PVR::CPVRClients::UpdateClients: Creating PVR client: addonId=pvr.iptvsimple, instanceId=1, clientId=1
+2026-03-15 13:35:48.224 T:23520    info <general>: [WS-Discovery]: Daemon started successfully.
+2026-03-15 13:35:48.226 T:2720     info <general>: PVR::CPVRClients::UpdateClients: Creating PVR client: addonId=pvr.iptvsimple, instanceId=91, clientId=2
+2026-03-15 13:35:48.231 T:2720     info <general>: AddOnLog: pvr.iptvsimple: pvr.iptvsimple - Create starting IPTV Simple PVR client...
+2026-03-15 13:35:48.256 T:18684    info <general>: AddOnLog: pvr.iptvsimple: pvr.iptvsimple - Init - Loaded '3' providers mappings
+2026-03-15 13:35:48.266 T:2720     info <general>: PVR Manager: Starting
+2026-03-15 13:35:48.287 T:18684    info <general>: AddOnLog: pvr.iptvsimple: pvr.iptvsimple - iptvsimple::PlaylistLoader::LoadPlayList Playlist Loaded - 30 (ms)
+2026-03-15 13:35:48.287 T:18684    info <general>: AddOnLog: pvr.iptvsimple: pvr.iptvsimple - iptvsimple::PlaylistLoader::LoadPlayList - Loaded 1121 channels.
+2026-03-15 13:35:48.287 T:18684    info <general>: AddOnLog: pvr.iptvsimple: pvr.iptvsimple - iptvsimple::PlaylistLoader::LoadPlayList - Loaded 29 channel groups.
+2026-03-15 13:35:48.287 T:18684    info <general>: AddOnLog: pvr.iptvsimple: pvr.iptvsimple - iptvsimple::PlaylistLoader::LoadPlayList - Loaded 0 providers.
+2026-03-15 13:35:48.287 T:18684    info <general>: AddOnLog: pvr.iptvsimple: pvr.iptvsimple - iptvsimple::PlaylistLoader::LoadPlayList - Loaded 0 media items.
+2026-03-15 13:35:48.305 T:24152    info <general>: AddOnLog: peripheral.joystick: Initialized joystick 0: "PRO Racing Pedals", axes: 3, hats: 0, buttons: 0
+2026-03-15 13:35:48.305 T:24152    info <general>: Loading controller layout: C:\Program Files\Kodi\addons\game.controller.default\resources\layout.xml
+2026-03-15 13:35:48.308 T:24152    info <general>: Loading controller layout: C:\Program Files\Kodi\addons\game.controller.mouse\resources\layout.xml
+2026-03-15 13:35:48.359 T:24152    info <general>: PERIPHERALS::CPeripheralAddon::Register - new joystick device registered on addon->peripheral.joystick/0: PRO Racing Pedals
+2026-03-15 13:35:49.103 T:18684    info <general>: AddOnLog: pvr.iptvsimple: pvr.iptvsimple - iptvsimple::Epg::LoadChannelEpgs - Loaded '1046' EPG channels.
+2026-03-15 13:35:49.396 T:18684    info <general>: AddOnLog: pvr.iptvsimple: pvr.iptvsimple - iptvsimple::Epg::LoadEpgEntries - Loaded '0' EPG entries.
+2026-03-15 13:35:49.420 T:18684    info <general>: AddOnLog: pvr.iptvsimple: pvr.iptvsimple - iptvsimple::Epg::LoadEPG - EPG Loaded - 1132 (ms)
+2026-03-15 13:35:49.420 T:18684    info <general>: AddOnLog: pvr.iptvsimple: IptvSimple::ConnectionEstablished Starting separate client update thread...
+2026-03-15 13:35:50.408 T:18948    info <general>: PVR Manager: Started
+2026-03-15 13:35:50.521 T:18948 warning <general>: PVR::CPVRClients::UpdateTimerTypes: Not calling add-on 'pvr.iptvsimple'. Add-on not (yet) connected.
+2026-03-15 13:35:50.522 T:18948 warning <general>: PVR::CPVRClients::GetTimers: Not calling add-on 'pvr.iptvsimple'. Add-on not (yet) connected.
+2026-03-15 13:35:51.791 T:15524    info <general>: CIRServerSuite::Process: failed to connect to irss, will keep retrying every 5 seconds
+2026-03-15 13:35:55.417 T:23456 warning <general>: PVR::CPVRClients::GetBackendProperties: Not calling add-on 'pvr.iptvsimple'. Add-on not (yet) connected.
+2026-03-15 13:35:57.819 T:23520    info <general>: Loading skin file: FileBrowser.xml, load type: KEEP_IN_MEMORY
+2026-03-15 13:35:58.226 T:23636 warning <general>: [WS-Discovery]: The initial search for servers has failed. No servers found.
+2026-03-15 13:35:59.976 T:23520 warning <general>: CGUIWindowManager - CGUIWindowManager::HandleAction - ignoring action 107, because topmost modal dialog closing animation is running
+2026-03-15 13:36:00.995 T:23520    info <general>: Skipped 10 duplicate messages..
+2026-03-15 13:36:00.995 T:23520    info <general>: Loading skin file: AddonBrowser.xml, load type: KEEP_IN_MEMORY
+2026-03-15 13:36:03.806 T:24256   error <general>: CCurlFile::XFILE::CCurlFile::Open - <https://dineshintry.github.io/plugin.kodi.jiotv/plugin.kodi.jiotv/resources/icon.png> Failed with code 404:
+                                                   
+2026-03-15 13:36:04.422 T:23520    info <general>: Loading skin file: DialogAddonInfo.xml, load type: KEEP_IN_MEMORY
+2026-03-15 13:36:04.458 T:24256   error <general>: CCurlFile::XFILE::CCurlFile::Open - <https://dineshintry.github.io/plugin.kodi.jiotv/plugin.kodi.jiotv/resources/icon.png> Failed with code 404:
+                                                   
+2026-03-15 13:36:06.022 T:23520 warning <general>: CGUIWindowManager - CGUIWindowManager::HandleAction - ignoring action 107, because topmost modal dialog closing animation is running
+2026-03-15 13:36:06.177 T:24256    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddon: plugin.kodi.jiotv v1.1.0 installed
+2026-03-15 13:36:06.248 T:2720    error <general>: CCurlFile::XFILE::CCurlFile::Open - <https://dineshintry.github.io/plugin.kodi.jiotv/plugin.kodi.jiotv/resources/icon.png> Failed with code 404:
+                                                   
+2026-03-15 13:36:06.269 T:23520 warning <general>: CGUIWindowManager - CGUIWindowManager::HandleAction - ignoring action 107, because topmost modal dialog closing animation is running
+2026-03-15 13:36:06.285 T:2720     info <general>: Skipped 1 duplicate messages..
+2026-03-15 13:36:06.285 T:2720    error <general>: CCurlFile::XFILE::CCurlFile::Open - <https://dineshintry.github.io/plugin.kodi.jiotv/plugin.kodi.jiotv/resources/icon.png> Failed with code 404:
+                                                   
+2026-03-15 13:36:06.293 T:23520 warning <general>: CGUIWindowManager - CGUIWindowManager::HandleAction - ignoring action 107, because topmost modal dialog closing animation is running
+2026-03-15 13:36:06.551 T:24280    info <general>: Skipped 1 duplicate messages..
+2026-03-15 13:36:06.551 T:24280    info <general>: [JioTV-Direct] Starting JioTV proxy on port: 48996
+2026-03-15 13:36:06.552 T:24280    info <general>: [JioTV-Direct] JioTV proxy service started successfully
+2026-03-15 13:36:21.164 T:22072    info <general>: [JioTV-Direct] [VOD-DEBUG] PLAY function called with: channel_id=894, showtime=None, srno=None, programId=None, begin=None, end=None
+2026-03-15 13:36:21.165 T:22072    info <general>: [JioTV-Direct] [VOD-DEBUG] Please enable Kodi debug logging manually for VOD playback analysis
+2026-03-15 13:36:21.387 T:22072 warning <general>: [script.module.inputstreamhelper] Widevine update check was made on 2026-03-07 14:01
+2026-03-15 13:36:21.388 T:22072    info <general>: [JioTV-Direct] [VOD-DEBUG] LIVE STREAM REQUEST: stream_type=Seek (no VOD params provided)
+2026-03-15 13:36:21.575 T:22072 warning <general>: [py.warnings] C:\Users\dines\AppData\Roaming\Kodi\addons\script.module.urllib3\lib\urllib3\connectionpool.py:1099: InsecureRequestWarning: Unverified HTTPS request is being made to host 'jiotvapi.media.jio.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+                                                     warnings.warn(
+                                                   
+2026-03-15 13:36:21.863 T:22072 warning <general>: [py.warnings] C:\Users\dines\AppData\Roaming\Kodi\addons\script.module.urllib3\lib\urllib3\connectionpool.py:1099: InsecureRequestWarning: Unverified HTTPS request is being made to host 'jiotvbpkmob.cdn.jio.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+                                                     warnings.warn(
+                                                   
+2026-03-15 13:36:21.961 T:22072 warning <general>: ListItem.addStreamInfo() is deprecated and might be removed in future Kodi versions. Please use InfoTagVideo.addVideoStream(), InfoTagVideo.addAudioStream() and InfoTagVideo.addSubtitleStream().
+2026-03-15 13:36:21.961 T:22072 warning <general>: Setting most video properties through ListItem.setInfo() is deprecated and might be removed in future Kodi versions. Please use the respective setter in InfoTagVideo.
+2026-03-15 13:36:22.001 T:23520    info <general>: VideoPlayer::OpenFile: plugin://plugin.kodi.jiotv/resources/lib/main/play/?_pickle_=80049528000000000000007d94288c075f7469746c655f948c064b5456204844948c0a6368616e6e656c5f6964944d7e03752e
+2026-03-15 13:36:22.002 T:24516 warning <general>: CDVDMessageQueue(player)::Put MSGQ_NOT_INITIALIZED
+2026-03-15 13:36:22.002 T:24516    info <general>: Creating InputStream
+2026-03-15 13:36:22.005 T:24516   error <general>: AddOnLog: inputstream.adaptive: Resolution not valid on "inputstream.adaptive.chooser_resolution_secure_max" property.
+2026-03-15 13:36:22.005 T:24516 warning <general>: AddOnLog: inputstream.adaptive: Warning "inputstream.adaptive.manifest_type" property is deprecated and will be removed next Kodi version, the manifest type is now automatically detected.
+                                                   If you are using a proxy remember to add the appropriate "content-type" header to the HTTP manifest response
+                                                   See Wiki page "How to provide custom manifest/license" to learn more about it.
+2026-03-15 13:36:22.007 T:24516    info <general>: AddOnLog: inputstream.adaptive: [Repr. chooser] Resolution set: 1920x1080, max allowed: 1920x1080, Adjust refresh rate: 0
+2026-03-15 13:36:22.075 T:24516    info <general>: AddOnLog: inputstream.adaptive: Manifest successfully parsed (Periods: 1, Streams in first period: 3, Type: live)
+2026-03-15 13:36:23.285 T:24516    info <general>: Creating Demuxer
+2026-03-15 13:36:23.286 T:24516    info <general>: Opening stream: 1005 source: 256
+2026-03-15 13:36:23.317 T:24516    info <general>: Creating video codec with codec id: 27
+2026-03-15 13:36:23.317 T:24516    info <general>: CDVDVideoCodecFFmpeg::Open() Using codec: H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10
+2026-03-15 13:36:23.318 T:24516    info <general>: Creating video thread
+2026-03-15 13:36:23.318 T:24432    info <general>: running thread: video_thread
+2026-03-15 13:36:23.319 T:24516    info <general>: Opening stream: 1006 source: 256
+2026-03-15 13:36:23.346 T:24516    info <general>: Finding audio codec for: 86018
+2026-03-15 13:36:23.350 T:24516    info <general>: CDVDAudioCodecFFmpeg::Open() Successful opened audio decoder aac
+2026-03-15 13:36:23.350 T:24516    info <general>: CVideoPlayerAudio::OpenStream: Allowing max Out-Of-Sync Value of 50 ms
+2026-03-15 13:36:23.350 T:24516    info <general>: Creating audio thread
+2026-03-15 13:36:23.351 T:17688    info <general>: running thread: CVideoPlayerAudio::Process()
+2026-03-15 13:36:23.482 T:11872   error <general>: AddOnLog: inputstream.adaptive: [AS-12] Download failed, HTTP error 403: https://jiotvbpkmob.cdn.jio.com/bpk-tv/KTV_HD_MOB/WDVLive/dash/KTV_HD_MOB-audio_33637_eng=33600-85130974508799.dash
+2026-03-15 13:36:24.482 T:11872 warning <general>: AddOnLog: inputstream.adaptive: [AS-12] Segment download failed, attempt 2...
+2026-03-15 13:36:24.537 T:24432    info <general>: DXVA::CContext::CreateContext: creating discrete d3d11va device for decoding.
+2026-03-15 13:36:24.556 T:24432    info <general>: DXVA::CContext::CreateContext: device for decoding created on adapter 'Intel(R) UHD Graphics' with D3D_FEATURE_LEVEL_12_1
+2026-03-15 13:36:24.563 T:17688    info <general>: CDVDAudioCodecFFmpeg::Open() Successful opened audio decoder aac
+2026-03-15 13:36:24.563 T:17688    info <general>: Creating audio stream (codec id: 86018, channels: 2, sample rate: 48000, no pass-through)
+2026-03-15 13:36:24.568 T:24432    info <general>: DXVA::CDecoder::Open: Total video memory available is 8163 MB (dedicated = 128 MB, shared = 8035 MB)
+2026-03-15 13:36:24.574 T:10912   error <general>: AddOnLog: inputstream.adaptive: [AS-11] Download failed, HTTP error 403: https://jiotvbpkmob.cdn.jio.com/bpk-tv/KTV_HD_MOB/WDVLive/dash/KTV_HD_MOB-video=2293600-1064137189757.dash
+2026-03-15 13:36:24.596 T:19880    info <general>: CActiveAESink::OpenSink - initialize sink
+2026-03-15 13:36:24.613 T:23520    info <general>: CRendererDXVA::Configure: chosen conversion: NV12 / YCBCR_STUDIO_G22_LEFT_P709 to R10G10B10A2_UNORM / RGB_FULL_G22_NONE_P709
+2026-03-15 13:36:24.613 T:23520    info <general>: DXVA::CEnumeratorHD::ProbeProcessorCaps: supported deinterlace methods: blend:yes, bob:yes, adaptive:yes, mocomp:yes.
+2026-03-15 13:36:24.621 T:23520 warning <general>: CRendererHQ::CheckVideoParameters: chosen scaling method 1 is not supported by renderer
+2026-03-15 13:36:24.643 T:23520    info <general>: Loading skin file: VideoFullScreen.xml, load type: KEEP_IN_MEMORY
+2026-03-15 13:36:24.863 T:24432    info <general>: CDVDVideoCodecFFmpeg::CDropControl: calculated diff time: 40000
+2026-03-15 13:36:25.576 T:10912 warning <general>: AddOnLog: inputstream.adaptive: [AS-11] Segment download failed, attempt 2...
+2026-03-15 13:36:25.777 T:23520    info <general>: Loading skin file: VideoOSD.xml, load type: KEEP_IN_MEMORY
+2026-03-15 13:36:26.441 T:17688   error <general>: CDVDAudio::AddPacketsRenderer - timeout adding data to renderer
+2026-03-15 13:36:27.793 T:23520    info <general>: CVideoPlayer::CloseFile()
+2026-03-15 13:36:27.795 T:23520    info <general>: VideoPlayer: waiting for threads to exit
+2026-03-15 13:36:27.803 T:24516    info <general>: CVideoPlayer::OnExit()
+2026-03-15 13:36:27.803 T:24516    info <general>: Closing stream player 1
+2026-03-15 13:36:27.803 T:24516    info <general>: Waiting for audio thread to exit
+2026-03-15 13:36:27.829 T:17688    info <general>: thread end: CVideoPlayerAudio::OnExit()
+2026-03-15 13:36:27.829 T:24516    info <general>: Closing audio device
+2026-03-15 13:36:27.849 T:19880    info <general>: CActiveAESink::OpenSink - initialize sink
+2026-03-15 13:36:27.849 T:24516    info <general>: Deleting audio codec
+2026-03-15 13:36:27.849 T:24516    info <general>: Closing stream player 2
+2026-03-15 13:36:27.850 T:24516    info <general>: waiting for video thread to exit
+2026-03-15 13:36:27.880 T:24432 warning <general>: CVideoPlayerVideo::OutputPicture - timeout waiting for buffer
+2026-03-15 13:36:27.880 T:24432    info <general>: thread end: video_thread
+2026-03-15 13:36:27.881 T:24516    info <general>: deleting video codec
+2026-03-15 13:36:27.885 T:24516    info <general>: DXVA::CDecoder::Close: closing decoder.
+2026-03-15 13:36:27.885 T:24516    info <general>: DXVA: closing decoder context.
+2026-03-15 13:36:27.892 T:24516   error <general>: AddOnLog: inputstream.adaptive: Instances: 1
+2026-03-15 13:36:27.907 T:24516    info <general>: ADDON: Dll Destroyed - InputStream Adaptive
+2026-03-15 13:36:27.908 T:23520    info <general>: VideoPlayer: finished waiting
+2026-03-15 13:36:27.908 T:23520    info <general>: CVideoPlayer::CloseFile()
+2026-03-15 13:36:27.908 T:23520    info <general>: VideoPlayer: waiting for threads to exit
+2026-03-15 13:36:27.908 T:23520    info <general>: VideoPlayer: finished waiting
+2026-03-15 13:36:32.131 T:23520    info <general>: Loading skin file: FileBrowser.xml, load type: KEEP_IN_MEMORY
+2026-03-15 13:36:53.243 T:23520 warning <general>: CGUIWindowManager - CGUIWindowManager::HandleAction - ignoring action 107, because topmost modal dialog closing animation is running
+2026-03-15 13:36:53.733 T:12468    info <general>: Skipped 2 duplicate messages..
+2026-03-15 13:36:53.733 T:12468    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddon: plugin.kodi.jiotv v1.1.0 installed
+2026-03-15 13:36:54.076 T:412      info <general>: [JioTV-Direct] Starting JioTV proxy on port: 48996
+2026-03-15 13:36:54.077 T:412      info <general>: [JioTV-Direct] JioTV proxy service started successfully
+2026-03-15 13:36:57.598 T:2720    error <general>: CCurlFile::XFILE::CCurlFile::Open - <https://dineshintry.github.io/plugin.kodi.jiotv/plugin.kodi.jiotv/resources/icon.png> Failed with code 404:
+                                                   
+2026-03-15 13:37:04.052 T:23520    info <general>: Skipped 4 duplicate messages..
+2026-03-15 13:37:04.051 T:23520    info <general>: Loading skin file: DialogConfirm.xml, load type: KEEP_IN_MEMORY
+2026-03-15 13:37:15.165 T:12468    info <general>: CAddonMgr::ADDON::CAddonMgr::FindAddon: plugin.kodi.jiotv v1.1.0 installed
+2026-03-15 13:37:15.245 T:23240   error <general>: CPythonInvoker(6, C:\Users\dines\AppData\Roaming\Kodi\addons\plugin.kodi.jiotv\service.py): C:\Users\dines\AppData\Roaming\Kodi\addons\plugin.kodi.jiotv\service.py not found!
+2026-03-15 13:37:15.250 T:12468   error <general>: CCurlFile::XFILE::CCurlFile::Open - <https://dineshintry.github.io/plugin.kodi.jiotv/plugin.kodi.jiotv/resources/icon.png> Failed with code 404:
+                                                   
+2026-03-15 13:37:15.262 T:23240   error <general>: EXCEPTION Thrown (PythonToCppException) : -->Python callback/script returned the following error<--
+                                                    - NOTE: IGNORING THIS CAN LEAD TO MEMORY LEAKS!
+                                                   Error Type: <class 'FileNotFoundError'>
+                                                   Error Contents: [Errno 2] No such file or directory: 'C:\\Users\\dines\\AppData\\Roaming\\Kodi\\addons\\plugin.kodi.jiotv\\service.py'
+                                                   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\dines\\AppData\\Roaming\\Kodi\\addons\\plugin.kodi.jiotv\\service.py'
+                                                   -->End of Python script error report<--
+                                                   
+2026-03-15 13:37:15.577 T:11888   error <general>: CCurlFile::XFILE::CCurlFile::Open - <https://dineshintry.github.io/plugin.kodi.jiotv/plugin.kodi.jiotv/resources/icon.png> Failed with code 404:
+                                                   
+2026-03-15 13:37:27.710 T:23520    info <general>: Loading skin file: DialogButtonMenu.xml, load type: KEEP_IN_MEMORY
+2026-03-15 13:37:29.434 T:23520    info <general>: Stopping the application...
+2026-03-15 13:37:29.434 T:23520    info <general>: Stopping player
+2026-03-15 13:37:29.434 T:23520    info <general>: Storing total System Uptime
+2026-03-15 13:37:29.434 T:23520    info <general>: Saving settings
+2026-03-15 13:37:29.436 T:23520    info <general>: Saving skin settings
+2026-03-15 13:37:29.437 T:23520    info <general>: Stopping all
+2026-03-15 13:37:29.437 T:23520    info <general>: ES: Stopping event server
+2026-03-15 13:37:29.437 T:23520    info <general>: [WS-Discovery]: terminating
+2026-03-15 13:37:30.275 T:11844    info <general>: ES: UDP Event server stopped
+2026-03-15 13:37:30.275 T:23520    info <general>: CServiceAddonManager: failed to stop inputstream.ffmpegdirect (may have ended)
+2026-03-15 13:37:30.276 T:23520    info <general>: CServiceAddonManager: failed to stop plugin.kodi.jiotv (may have ended)
+2026-03-15 13:37:30.276 T:23520    info <general>: CServiceAddonManager: failed to stop service.xbmc.versioncheck (may have ended)
+2026-03-15 13:37:30.399 T:23520    info <general>: Application stopped
+2026-03-15 13:37:30.601 T:23520    info <general>: PVR Manager: Stopping
+2026-03-15 13:37:31.580 T:2556     info <general>: EPG Container: Persisting unsaved events...
+2026-03-15 13:37:31.581 T:2556     info <general>: EPG Container: Persisting events done
+2026-03-15 13:37:31.590 T:18948    info <general>: PVR Manager: Stopped
+2026-03-15 13:37:31.872 T:23520    info <general>: AddOnLog: pvr.iptvsimple: pvr.iptvsimple - ConnectionLost Could not validiate M3U after startup, but ignoring as startup is all we care about.
+2026-03-15 13:37:33.559 T:23520    info <general>: Skipped 3 duplicate messages..
+2026-03-15 13:37:33.559 T:23520    info <general>: ADDON: Dll Destroyed - IPTV Simple Client
+2026-03-15 13:37:33.832 T:23520    info <general>: AddOnLog: peripheral.joystick: Disabling joystick interface "directinput"
+2026-03-15 13:37:33.832 T:23520    info <general>: AddOnLog: peripheral.joystick: Disabling joystick interface "xinput"
+2026-03-15 13:37:33.832 T:23520    info <general>: ADDON: Dll Destroyed - Joystick Support
+2026-03-15 13:37:33.832 T:23520    info <general>: unload skin
+2026-03-15 13:37:33.852 T:23520    info <general>: Unloaded skin
+2026-03-15 13:37:33.884 T:23520    info <general>: unload sections
+2026-03-15 13:37:33.891 T:23520    info <general>: Exiting the application...
