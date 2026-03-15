@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.kodi.jiotv" name="JioTV Direct" version="1.1.1" provider-name="Community">
+<addon id="plugin.kodi.jiotv" name="JioTV Direct" version="1.1.2" provider-name="Community">
     <requires>
         <import addon="xbmc.python" version="3.0.0" />
         <import addon="script.module.codequick" version="1.0.2" />
@@ -22,11 +22,15 @@
         <platform>all</platform>
         <license>MIT</license>
         <news>
+v1.1.2
+- Fixed "context has no attribute: add_item" error in menus
+- Fixed VOD playback stability (addressed 400 errors)
+- Fixed invalid inputstream.adaptive resolution property
+- Improved API request encoding for VOD streams
+
 v1.1.1
 - Added: Safety Shield (Auto Backup &amp; Restore for account settings).
 - Fixed: Addon update failures on Windows (Faster service shutdown).
-- Fixed: Repository 404 errors for icons/fanarts.
-- Improved: Repository deployment with MD5 for reliable updates.
         </news>
         <disclaimer>This plugin is not officially commissioned/supported by Jio. The trademark "Jio"
             is registered by "Reliance Corporate IT Park Limited (RCITPL)"</disclaimer>

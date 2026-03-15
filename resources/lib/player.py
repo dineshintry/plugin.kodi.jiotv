@@ -120,22 +120,32 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
 
             sony_headers = getSonyHeaders(channel_id=chan, languageId=langId)
             
-            api_data = f"stream_type={rjson['stream_type']}&channel_id={chan}"
-            
+            api_params = {
+                "stream_type": rjson['stream_type'],
+                "channel_id": chan
+            }
             if isCatchup:
-                api_data += f"&srno={rjson.get('srno', '')}"
-                api_data += f"&programId={rjson.get('programId', '')}"
-                api_data += f"&begin={rjson.get('begin', '')}"
-                api_data += f"&end={rjson.get('end', '')}"
-                api_data += f"&showtime={rjson.get('showtime', '')}"
-            
+                api_params.update({
+                    "srno": rjson.get('srno', ''),
+                    "programId": rjson.get('programId', '') or "",
+                    "begin": rjson.get('begin', ''),
+                    "end": rjson.get('end', ''),
+                    "showtime": rjson.get('showtime', '')
+                })
+
             res = urlquick.post(
                 "https://jiotvapi.media.jio.com/playback/apis/v1.1/geturl",
-                data=api_data,
+                data=api_params,
                 verify=False,
                 headers=sony_headers,
                 max_age=-1,
+                raise_for_status=False
             )
+
+            if res.status_code != 200:
+                Script.log(f"VOD API Error: {res.status_code} - {res.text}", lvl=Script.ERROR)
+                Script.notify("Playback Error", f"API returned {res.status_code}")
+                return False
 
             api_response = res.json()
             result_url = api_response.get("result", "")
@@ -299,7 +309,7 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
             "IsPlayable": True,
             "inputstream": "inputstream.adaptive",
             "inputstream.adaptive.stream_selection_type": selectionType,
-            "inputstream.adaptive.chooser_resolution_secure_max": "4k",
+            "inputstream.adaptive.chooser_resolution_secure_max": "max",
             "inputstream.adaptive.manifest_type": "mpd" if isMpd else "hls",
         }
 

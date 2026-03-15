@@ -186,7 +186,7 @@ def show_category(plugin, categoryOrLang, by):
                     params = {"channel_id": each.get("channel_id"), "channel_name": each.get("channel_name")}
                     from urllib.parse import urlencode
                     action = f"RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/record_live_stream/?{urlencode(params)})"
-                    litm.context.add_item("Record Live Stream", action)
+                    litm.context.menu([("Record Live Stream", action)])
                 yield litm
     except Exception as e:
         Script.notify("Error", e)
