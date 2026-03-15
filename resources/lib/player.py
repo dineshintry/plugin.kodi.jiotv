@@ -198,9 +198,10 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
         if isMpd:
             uriToUse = mpd_data.get("result", "")
             try:
-                 mpd_resp = urlquick.head(uriToUse, headers={"User-Agent": "okhttp/4.2.2"}, verify=False, max_age=-1)
+                 mpd_resp = urlquick.head(uriToUse, headers={"User-Agent": "plaYtv/7.1.5 (Linux;Android 9) ExoPlayerLib/2.11.7"}, verify=False, max_age=-1)
                  c_dict = mpd_resp.cookies.get_dict()
                  cookie_str = "; ".join([f"{k}={v}" for k, v in c_dict.items()])
+                 Script.log(f"[MPD] Cookies fetched: {cookie_str}", lvl=Script.INFO)
             except Exception as e:
                 Script.log(f"Cookie fetch failed: {e}", lvl=Script.ERROR)
 
@@ -309,7 +310,8 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
             "IsPlayable": True,
             "inputstream": "inputstream.adaptive",
             "inputstream.adaptive.stream_selection_type": selectionType,
-            "inputstream.adaptive.chooser_resolution_secure_max": "max",
+            "inputstream.adaptive.chooser_resolution_secure_max": "1080",
+            "inputstream.adaptive.max_resolution": "1080",
             "inputstream.adaptive.manifest_type": "mpd" if isMpd else "hls",
         }
 
@@ -321,9 +323,17 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
             )
             
             stream_headers = headers.copy()
-            stream_headers["User-Agent"] = "okhttp/4.2.2"
+            stream_headers["User-Agent"] = "plaYtv/7.1.5 (Linux;Android 9) ExoPlayerLib/2.11.7"
             if cookie_str:
                 stream_headers["Cookie"] = cookie_str
+            
+            # Ensure __hdnea__ token is present in headers if extracted from URL
+            if "__hdnea__" in uriToUse:
+                token = "__hdnea__" + uriToUse.split("__hdnea__")[-1]
+                if cookie_str:
+                    stream_headers["Cookie"] = f"{cookie_str}; {token}"
+                else:
+                    stream_headers["Cookie"] = token
             
             props["inputstream.adaptive.stream_headers"] = urlencode(stream_headers)
             props["inputstream.adaptive.manifest_headers"] = urlencode(stream_headers)

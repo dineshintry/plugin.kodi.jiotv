@@ -145,7 +145,6 @@ def show_category(plugin, categoryOrLang, by):
                 return LANG_MAP[
                     str(x.get("channelLanguageId"))
                 ] == categoryOrLang and isPlayAbleGenre(x, GENRE_MAP)
-
     try:
         flist = list(filter(fltr, resp))
         if len(flist) < 1:
@@ -158,39 +157,47 @@ def show_category(plugin, categoryOrLang, by):
             )
         else:
             for each in flist:
-                if Settings.get_boolean("number_toggle"):
-                    channel_number = int(each.get("channel_order")) + 1
-                    channel_name = str(channel_number) + " " + each.get("channel_name")
-                else:
-                    channel_name = each.get("channel_name")
-                litm = Listitem.from_dict(
-                    **{
-                        "label": channel_name,
-                        "art": {
-                            "thumb": IMG_CATCHUP + each.get("logoUrl"),
-                            "icon": IMG_CATCHUP + each.get("logoUrl"),
-                            "fanart": IMG_CATCHUP + each.get("logoUrl"),
-                            "clearlogo": IMG_CATCHUP + each.get("logoUrl"),
-                            "clearart": IMG_CATCHUP + each.get("logoUrl"),
-                        },
-                        "callback": play,
-                        "params": {"channel_id": each.get("channel_id")},
-                    }
-                )
-                if each.get("isCatchupAvailable"):
-                    start_time = datetime.fromtimestamp(int(each.get("startEpoch", 0) * 0.001))
+                try:
+                    if Settings.get_boolean("number_toggle"):
+                        channel_number = int(each.get("channel_order", 0)) + 1
+                        channel_name = str(channel_number) + " " + each.get("channel_name", "Unknown")
+                    else:
+                        channel_name = each.get("channel_name", "Unknown")
                     
-                    litm.context.container(
-                        show_epg, "Catchup", 0, each.get("channel_id")
+                    litm = Listitem.from_dict(
+                        **{
+                            "label": channel_name,
+                            "art": {
+                                "thumb": IMG_CATCHUP + each.get("logoUrl", ""),
+                                "icon": IMG_CATCHUP + each.get("logoUrl", ""),
+                                "fanart": IMG_CATCHUP + each.get("logoUrl", ""),
+                                "clearlogo": IMG_CATCHUP + each.get("logoUrl", ""),
+                                "clearart": IMG_CATCHUP + each.get("logoUrl", ""),
+                            },
+                            "callback": play,
+                            "params": {"channel_id": each.get("channel_id")},
+                        }
                     )
-                    params = {"channel_id": each.get("channel_id"), "channel_name": each.get("channel_name")}
-                    from urllib.parse import urlencode
-                    action = f"RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/record_live_stream/?{urlencode(params)})"
-                    litm.context.menu([("Record Live Stream", action)])
-                yield litm
+                    
+                    if each.get("isCatchupAvailable"):
+                        # Proper CodeQuick context menu for Catchup and Recording
+                        from urllib.parse import urlencode
+                        record_params = {"channel_id": each.get("channel_id"), "channel_name": each.get("channel_name", "Stream")}
+                        record_action = f"RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/record_live_stream/?{urlencode(record_params)})"
+                        
+                        catchup_uri = Route.ref(show_epg, day=0, channel_id=each.get("channel_id"))
+                        catchup_action = f"Container.Update({catchup_uri})"
+                        
+                        litm.add_context_menu([
+                            ("Catchup", catchup_action),
+                            ("Record Live Stream", record_action)
+                        ])
+                    yield litm
+                except Exception as loop_e:
+                    Script.log(f"Error processing channel {each.get('channel_name')}: {loop_e}", lvl=Script.WARNING)
+                    continue
     except Exception as e:
-        Script.notify("Error", e)
-        monitor.waitForAbort(1)
+        Script.notify("Error loading category", e)
         return
 
 

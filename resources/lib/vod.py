@@ -421,9 +421,12 @@ def show_vod_channel_content(plugin, channel_id, offset_days=None):
             action = f"RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/download_vod/?{urlencode(params)})"
             action_fast = f"RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/download_vod_fast/?{urlencode(params)})"
             action_superfast = f"RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/download_vod_superfast/?{urlencode(params)})"
-            vod_item.context.append(("Download VOD", action))
-            vod_item.context.append(("Download VOD (Fast)", action_fast))
-            vod_item.context.append(("Download VOD (Super Fast)", action_superfast))
+            
+            vod_item.add_context_menu([
+                ("Download VOD", action),
+                ("Download VOD (Fast)", action_fast),
+                ("Download VOD (Super Fast)", action_superfast)
+            ])
 
             yield vod_item
     
