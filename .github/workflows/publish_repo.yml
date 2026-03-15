@@ -46,6 +46,53 @@ jobs:
           # Generate MD5
           md5sum repo/addons.xml | cut -d ' ' -f 1 > repo/addons.xml.md5
 
+          # Generate index.html for a better landing page experience
+          cat <<EOF > repo/index.html
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>JioTV Direct Kodi Repository</title>
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <style>
+                  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 40px 20px; background: #f4f7f6; }
+                  .card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center; }
+                  img.logo { width: 120px; height: 120px; border-radius: 20px; margin-bottom: 20px; }
+                  h1 { margin: 0 0 10px; color: #2c3e50; }
+                  .version { color: #7f8c8d; font-size: 0.9em; margin-bottom: 30px; }
+                  .url-box { background: #edf2f7; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 1.1em; margin: 20px 0; border: 1px dashed #cbd5e0; word-break: break-all; }
+                  .instructions { text-align: left; margin-top: 40px; }
+                  h2 { color: #2c3e50; border-bottom: 2px solid #edf2f7; padding-bottom: 10px; }
+                  ol { padding-left: 20px; }
+                  li { margin-bottom: 10px; }
+                  code { background: #edf2f7; padding: 2px 5px; border-radius: 4px; }
+              </style>
+          </head>
+          <body>
+              <div class="card">
+                  <img src="plugin.kodi.jiotv/icon.png" class="logo" alt="JioTV Direct Icon">
+                  <h1>JioTV Direct</h1>
+                  <div class="version">Current Version: v$VERSION</div>
+                  <p>This is the official Kodi repository for JioTV Direct.</p>
+                  
+                  <h2>Kodi Source URL</h2>
+                  <p>Add this URL to your Kodi File Manager:</p>
+                  <div class="url-box">https://dineshintry.github.io/plugin.kodi.jiotv/</div>
+                  
+                  <div class="instructions">
+                      <h2>Installation Steps</h2>
+                      <ol>
+                          <li>In Kodi, go to <strong>Settings</strong> > <strong>File Manager</strong> > <strong>Add Source</strong>.</li>
+                          <li>Enter the URL above and name it <code>JioTV Direct Repo</code>.</li>
+                          <li>Go to <strong>Settings</strong> > <strong>Add-ons</strong> > <strong>Install from zip file</strong>.</li>
+                          <li>Select <code>JioTV Direct Repo</code> and choose the ZIP file inside the folder.</li>
+                          <li>The addon will install and updates will be handled automatically.</li>
+                      </ol>
+                  </div>
+              </div>
+          </body>
+          </html>
+          EOF
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
