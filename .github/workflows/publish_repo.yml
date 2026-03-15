@@ -1,0 +1,53 @@
+name: Publish Kodi Repository
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout addon code
+        uses: actions/checkout@v3
+        with:
+          path: addon
+
+      - name: Set up Repository Structure
+        run: |
+          mkdir -p repo/plugin.kodi.jiotv
+          
+          # Create the zip file for the addon
+          # We zip the 'addon' folder into a zip named after the addon ID and version
+          VERSION=$(grep -oP 'version="\K[^"]+' addon/addon.xml)
+          ADDON_ID=$(grep -oP 'id="\K[^"]+' addon/addon.xml)
+          
+          cd addon
+          zip -r ../repo/$ADDON_ID/$ADDON_ID-$VERSION.zip . -x "*.git*" ".github*" "kodi.log" "mds/*" "test_scripts/*"
+          cd ..
+          
+          # Copy icon and fanart for the repo listing
+          cp addon/resources/icon.png repo/$ADDON_ID/icon.png || true
+          cp addon/resources/fanart.png repo/$ADDON_ID/fanart.png || true
+          
+          # Generate addons.xml and addons.xml.md5
+          # This is a simplified generator. For a real repo, we should use a proper script.
+          # Here we'll create a basic one for this single addon.
+          cat <<EOF > repo/addons.xml
+          <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+          <addons>
+          $(cat addon/addon.xml | sed 's/<?xml.*?>//')
+          </addons>
+          EOF
+          
+          # Generate MD5
+          md5sum repo/addons.xml | cut -d ' ' -f 1 > repo/addons.xml.md5
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./repo
+          publish_branch: gh-pages
+          force_orphan: true
