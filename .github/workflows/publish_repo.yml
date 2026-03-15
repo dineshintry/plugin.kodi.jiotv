@@ -59,8 +59,8 @@ jobs:
           cat addon/repository.jiotvdirect/addon.xml | sed 's/<?xml.*?>//' >> repo/addons.xml
           echo '</addons>' >> repo/addons.xml
           
-          # Generate MD5
-          md5sum repo/addons.xml | cut -d ' ' -f 1 > repo/addons.xml.md5
+          # Generate MD5 with NO newline (Kodi is picky about this)
+          md5sum repo/addons.xml | cut -d ' ' -f 1 | tr -d '\n' > repo/addons.xml.md5
 
           # 4. Generate landing page
           cat <<EOF > repo/index.html
@@ -75,10 +75,8 @@ jobs:
                   img.logo { width: 120px; height: 120px; border-radius: 20px; margin-bottom: 20px; }
                   h1 { margin: 0 0 10px; color: #2c3e50; }
                   .version { color: #7f8c8d; font-size: 0.9em; margin-bottom: 30px; }
-                  .btn { background: #27ae60; color: white !important; padding: 12px 25px; border-radius: 5px; text-decoration: none; font-weight: bold; display: inline-block; margin: 10px; transition: background 0.2s; }
-                  .btn:hover { background: #219150; }
-                  .btn-repo { background: #2980b9; }
-                  .btn-repo:hover { background: #2471a3; }
+                  .btn { background: #2980b9; color: white !important; padding: 12px 25px; border-radius: 5px; text-decoration: none; font-weight: bold; display: inline-block; margin: 10px; transition: background 0.2s; }
+                  .btn:hover { background: #2471a3; }
                   .url-box { background: #edf2f7; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 1.1em; margin: 20px 0; border: 1px dashed #cbd5e0; word-break: break-all; }
                   .instructions { text-align: left; margin-top: 40px; }
                   h2 { color: #2c3e50; border-bottom: 2px solid #edf2f7; padding-bottom: 10px; }
@@ -91,13 +89,10 @@ jobs:
                   <img src="plugin.kodi.jiotv/icon.png" class="logo" alt="JioTV Direct Icon">
                   <h1>JioTV Direct</h1>
                   <div class="version">Latest Release: v$VERSION</div>
-                  <p>Welcome to the official JioTV Direct repository.</p>
+                  <p>Official Repository for JioTV Direct Kodi Addon.</p>
                   
                   <div style="margin: 30px 0;">
-                      <p><strong>Recommended:</strong> Install the Repository to get automatic updates.</p>
-                      <a href="$REPO_ID-1.0.0.zip" class="btn btn-repo">Download Repository ZIP</a>
-                      <!-- <br>
-                      <small>or <a href="$ADDON_ID-$VERSION.zip">Download Plugin ZIP only</a></small> -->
+                      <a href="$REPO_ID-1.0.0.zip" class="btn">Download Repository ZIP</a>
                   </div>
 
                   <h2>Kodi Source URL</h2>
@@ -115,12 +110,13 @@ jobs:
                       </ol>
                   </div>
 
+                  <!-- Kodi Scraper Compatibility List -->
                   <div style="text-align: left; margin-top: 50px; border-top: 1px solid #edf2f7; padding-top: 20px;">
                       <h3 style="font-size: 0.9em; color: #7f8c8d;">Repository Files:</h3>
                       <ul style="list-style: none; padding: 0; font-family: monospace; font-size: 0.85em;">
                           <li><a href="$REPO_ID-1.0.0.zip">$REPO_ID-1.0.0.zip</a></li>
-                          <!-- <li><a href="$ADDON_ID-$VERSION.zip">$ADDON_ID-$VERSION.zip</a></li> -->
                           <li><a href="addons.xml">addons.xml</a></li>
+                          <li><a href="addons.xml.md5">addons.xml.md5</a></li>
                       </ul>
                   </div>
               </div>
