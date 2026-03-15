@@ -24,8 +24,12 @@ jobs:
           VERSION=${GITHUB_REF_NAME#v}
           ADDON_ID=$(grep -m 1 -oP 'id="\Kplugin.kodi.jiotv' addon/addon.xml)
           
-          cd addon
-          zip -r ../repo/$ADDON_ID/$ADDON_ID-$VERSION.zip . -x "*.git*" ".github*" "kodi.log" "mds/*" "test_scripts/*"
+          # Prepare a temporary directory with the addon ID as the folder name
+          mkdir -p temp/$ADDON_ID
+          cp -r addon/* temp/$ADDON_ID/
+          
+          cd temp
+          zip -r ../repo/$ADDON_ID/$ADDON_ID-$VERSION.zip $ADDON_ID -x "*.git*" ".github*" "kodi.log" "mds/*" "test_scripts/*"
           cd ..
           
           # Create a copy of the zip in the root for direct access if needed
