@@ -3,6 +3,7 @@
     <extension point="xbmc.addon.repository" name="JioTV Direct Repository">
         <dir>
             <info compressed="false">https://dineshintry.github.io/plugin.kodi.jiotv/addons.xml</info>
+            <checksum>https://dineshintry.github.io/plugin.kodi.jiotv/addons.xml.md5</checksum>
             <datadir zip="true">https://dineshintry.github.io/plugin.kodi.jiotv/</datadir>
         </dir>
     </extension>
