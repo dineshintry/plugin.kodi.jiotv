@@ -77,7 +77,7 @@ jobs:
                   <p>This is the official Kodi repository for JioTV Direct.</p>
                   
                   <div style="margin: 30px 0;">
-                      <a href="$ADDON_ID-$VERSION.zip" style="background: #27ae60; color: white; padding: 12px 25px; border-radius: 5px; text-decoration: none; font-weight: bold; display: inline-block;">Download ZIP (Direct)</a>
+                      <a href="$ADDON_ID-$VERSION.zip" style="background: #27ae60; color: white; padding: 12px 25px; border-radius: 5px; text-decoration: none; font-weight: bold; display: inline-block;">Download $ADDON_ID-$VERSION.zip</a>
                   </div>
 
                   <h2>Kodi Source URL</h2>
@@ -90,9 +90,19 @@ jobs:
                           <li>In Kodi, go to <strong>Settings</strong> > <strong>File Manager</strong> > <strong>Add Source</strong>.</li>
                           <li>Enter the URL above and name it <code>JioTV Direct Repo</code>.</li>
                           <li>Go to <strong>Settings</strong> > <strong>Add-ons</strong> > <strong>Install from zip file</strong>.</li>
-                          <li>Select <code>JioTV Direct Repo</code> and choose the ZIP file inside the folder.</li>
+                          <li>Select <code>JioTV Direct Repo</code> and choose the ZIP file listed inside.</li>
                           <li>The addon will install and updates will be handled automatically.</li>
                       </ol>
+                  </div>
+
+                  <!-- Kodi Scraper Compatibility List -->
+                  <div style="text-align: left; margin-top: 50px; border-top: 1px solid #edf2f7; padding-top: 20px;">
+                      <h3 style="font-size: 0.9em; color: #7f8c8d;">Repository Files:</h3>
+                      <ul style="list-style: none; padding: 0; font-family: monospace; font-size: 0.85em;">
+                          <li><a href="$ADDON_ID-$VERSION.zip">$ADDON_ID-$VERSION.zip</a></li>
+                          <li><a href="addons.xml">addons.xml</a></li>
+                          <li><a href="addons.xml.md5">addons.xml.md5</a></li>
+                      </ul>
                   </div>
               </div>
           </body>
