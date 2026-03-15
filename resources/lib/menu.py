@@ -188,10 +188,8 @@ def show_category(plugin, categoryOrLang, by):
                         catchup_uri = Route.ref(show_epg, 0, each.get("channel_id"))
                         catchup_action = f"Container.Update({catchup_uri})"
                         
-                        litm.context.menu([
-                            ("Catchup", catchup_action),
-                            ("Record Live Stream", record_action)
-                        ])
+                        litm.context.append(("Catchup", catchup_action))
+                        litm.context.append(("Record Live Stream", record_action))
                     yield litm
                 except Exception as loop_e:
                     Script.log(f"Error processing channel {each.get('channel_name')}: {loop_e}", lvl=Script.WARNING)

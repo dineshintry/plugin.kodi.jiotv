@@ -23,10 +23,11 @@
         <license>MIT</license>
         <news>
 v1.1.2
-- Fixed "context has no attribute: add_item" error in menus
-- Fixed VOD playback stability (addressed 400 errors)
+- Fixed "context object" and "AttributeError" in menus
+- Fixed VOD playback stability (addressed 400 and 403 errors)
 - Fixed invalid inputstream.adaptive resolution property
-- Improved API request encoding for VOD streams
+- Fixed "ref() got unexpected keyword argument" in catchup menus
+- Improved API request encoding and User-Agent for VOD streams
 
 v1.1.1
 - Added: Safety Shield (Auto Backup &amp; Restore for account settings).
