@@ -22,12 +22,15 @@ jobs:
           
           # Create the zip file for the addon
           # We zip the 'addon' folder into a zip named after the addon ID and version
-          VERSION=$(grep -oP 'version="\K[^"]+' addon/addon.xml)
-          ADDON_ID=$(grep -oP 'id="\K[^"]+' addon/addon.xml)
+          VERSION=$(grep -m 1 -oP 'version="\K[^"]+' addon/addon.xml)
+          ADDON_ID=$(grep -m 1 -oP 'id="\K[^"]+' addon/addon.xml)
           
           cd addon
           zip -r ../repo/$ADDON_ID/$ADDON_ID-$VERSION.zip . -x "*.git*" ".github*" "kodi.log" "mds/*" "test_scripts/*"
           cd ..
+          
+          # Create a copy of the zip in the root for direct access if needed
+          cp repo/$ADDON_ID/$ADDON_ID-$VERSION.zip repo/
           
           # Copy icon and fanart for the repo listing
           cp addon/resources/icon.png repo/$ADDON_ID/icon.png || true
@@ -74,6 +77,10 @@ jobs:
                   <div class="version">Current Version: v$VERSION</div>
                   <p>This is the official Kodi repository for JioTV Direct.</p>
                   
+                  <div style="margin: 30px 0;">
+                      <a href="$ADDON_ID-$VERSION.zip" style="background: #27ae60; color: white; padding: 12px 25px; border-radius: 5px; text-decoration: none; font-weight: bold; display: inline-block;">Download ZIP (Direct)</a>
+                  </div>
+
                   <h2>Kodi Source URL</h2>
                   <p>Add this URL to your Kodi File Manager:</p>
                   <div class="url-box">https://dineshintry.github.io/plugin.kodi.jiotv/</div>
