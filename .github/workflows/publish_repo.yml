@@ -59,9 +59,6 @@ jobs:
           cat addon/repository.jiotvdirect/addon.xml | sed 's/<?xml.*?>//' >> repo/addons.xml
           echo '</addons>' >> repo/addons.xml
           
-          # Generate MD5 with NO newline (Kodi is extremely picky about this)
-          HASH=$(md5sum repo/addons.xml | cut -d ' ' -f 1)
-          printf "%s" "$HASH" > repo/addons.xml.md5
 
           # 4. Generate landing page
           cat <<EOF > repo/index.html
@@ -117,7 +114,6 @@ jobs:
                       <ul style="list-style: none; padding: 0; font-family: monospace; font-size: 0.85em;">
                           <li><a href="$REPO_ID-1.0.0.zip">$REPO_ID-1.0.0.zip</a></li>
                           <li><a href="addons.xml">addons.xml</a></li>
-                          <li><a href="addons.xml.md5">addons.xml.md5</a></li>
                       </ul>
                   </div>
               </div>
