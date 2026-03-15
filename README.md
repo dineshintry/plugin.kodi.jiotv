@@ -34,6 +34,14 @@ It uses a direct license key fetcher with cookies for better streaming performan
 6. **Updates**: By installing via this repository, your add-on will now receive automatic updates whenever a new version is released.
 7. **Configuration**: Once installed, open the add-on settings to log in with your Jio account.
 
+### Alternative: Manual Installation (Via Zip)
+If you prefer to install the addon manually without the repository:
+1. **Download the Zip**: Go to the [Releases](https://github.com/dineshintry/plugin.kodi.jiotv/releases) page and download the `plugin.kodi.jiotv-x.x.x.zip` from the latest tag.
+2. **Install in Kodi**:
+   - Go to **Settings** > **Add-ons** > **Install from zip file**.
+   - Locate and select the downloaded zip file.
+   - Note: Manual installations **do not** receive automatic updates. You must repeat this process for every new version.
+
 ### Troubleshooting Installation
 If you encounter a failure while installing from the zip file:
 1. **Quit/Close Kodi** completely.
