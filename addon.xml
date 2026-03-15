@@ -16,7 +16,7 @@
     </extension>
     <extension point="xbmc.service" library="service.py" />
     <extension point="xbmc.addon.metadata">
-        <summary lang="en_GB">Stream Live Indian Channels & VOD Content From JioTV on Kodi</summary>
+        <summary lang="en_GB">Stream Live Indian Channels &amp; VOD Content From JioTV on Kodi</summary>
         <description lang="en_GB">Enjoy Live TV experience and Video on Demand content in Kodi.</description>
         <language>en</language>
         <platform>all</platform>
