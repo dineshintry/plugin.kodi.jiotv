@@ -42,6 +42,11 @@ If you prefer to install the addon manually without the repository:
    - Locate and select the downloaded zip file.
    - Note: Manual installations **do not** receive automatic updates. You must repeat this process for every new version.
 
+## Video Guides
+
+- **Troubleshooting & Upgrade Guide**: [Watch Video](https://youtu.be/S2B6uM9G_zY)
+- **Zip Installation Guide (GitHub Repo)**: [Watch Video](https://www.youtube.com/watch?v=_HSdOhaN3Uo)
+
 ### Troubleshooting Installation
 If you encounter a failure while installing from the zip file:
 1. **Quit/Close Kodi** completely.
