@@ -16,14 +16,18 @@ It uses a direct license key fetcher with cookies for better streaming performan
 
 ## Installation Instructions
 
-1. **Download the Add-on**: Go to the [Releases](../../releases) section of this repository and download the latest `.zip` file.
-2. **Open Kodi**: Launch Kodi on your device.
-3. **Settings**: Go to **Settings** (gear icon) > **System** > **Add-ons**.
-4. **Unknown Sources**: Ensure "Unknown sources" is enabled.
-5. **Install from Zip**:
-   - Go back to the **Add-ons** browser.
-   - Select **Install from zip file**.
-   - Navigate to where you downloaded the `.zip` file and select it.
+1. **Open Kodi**: Launch Kodi on your device.
+2. **Settings**: Go to **Settings** (gear icon) > **File Manager**.
+3. **Add Source**:
+   - Select **Add source**.
+   - Enter the URL: `https://dineshintry.github.io/plugin.kodi.jiotv/`
+   - Name it `JioTV Direct Repo`.
+4. **Install from Zip**:
+   - Go to **Settings** > **Add-ons**.
+   - Select **Install from zip file**. (Enable "Unknown sources" if prompted)
+   - Choose `JioTV Direct Repo`.
+   - Select the addon zip file to install.
+5. **Updates**: By installing via this repository source, your add-on will now receive automatic updates whenever a new version is released.
 6. **Configuration**: Once installed, open the add-on settings to log in with your Jio account.
 
 ### Troubleshooting Installation
