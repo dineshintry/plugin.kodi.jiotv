@@ -56,7 +56,7 @@ if Settings.get_boolean("m3ugen"):
 
 monitor = Monitor()
 while not monitor.abortRequested():
-    if monitor.waitForAbort(10):
+    if monitor.waitForAbort(1):
         handler.shutdown()
         handler.server_close()
         break
