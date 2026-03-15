@@ -3,6 +3,12 @@ mds/
 
 # Ignore test_scripts folder
 test_scripts/
+kodi.log
+*.log
+*.pickle
+*.webp
+*.zip
+*.zip.md5
 
 # Ignore .idea folder
 .idea/
