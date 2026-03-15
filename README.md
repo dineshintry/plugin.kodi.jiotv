@@ -40,6 +40,22 @@ If you encounter a failure while installing from the zip file:
 2. **Re-launch Kodi**.
 3. Go back to **Install from zip file** and try selecting the file again. This often resolves playback dependency or caching issues during the first install.
 
+## ⚠️ Migration & Important Notices
+
+### Upgrading from Manual Zip to Repository
+If you previously installed the addon manually via a ZIP file and are now moving to the Repository source:
+- **Favorites Loss**: Migrating to the repository route may remove some of your existing favorites.
+- **Clean Install**: If prompted by Kodi to "remove settings" during the upgrade/reinstall to the repository source, **select "Yes"**. This ensures a clean configuration compatible with the repository's update system.
+
+### Coexistence with other JioTV Addons
+Installing **JioTV Direct** (`plugin.kodi.jiotv`) does **not** replace or overwrite any existing JioTV addons (like `plugin.video.jiotv`). Both can be installed on the same system simultaneously.
+
+### Favorites & Stream Compatibility
+If you have favorites saved from **older or different** JioTV addons, they will **not work** with JioTV Direct.
+- Old favorites point to different internal IDs and may use outdated streaming formats.
+- To use JioTV Direct's high-quality **MPD streams**, you must **manually re-favorite** your channels from within the JioTV Direct addon menus.
+- Only favorites created directly within this addon will benefit from the latest stream updates and performance improvements.
+
 ## Video On Demand (VOD) / Catch-up Feature (Supported after tag v1.0.1)
 
 This add-on now supports Video On Demand (VOD) and catch-up TV functionality for compatible channels.
