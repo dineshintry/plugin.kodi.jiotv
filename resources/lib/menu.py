@@ -185,10 +185,10 @@ def show_category(plugin, categoryOrLang, by):
                         record_params = {"channel_id": each.get("channel_id"), "channel_name": each.get("channel_name", "Stream")}
                         record_action = f"RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/record_live_stream/?{urlencode(record_params)})"
                         
-                        catchup_uri = Route.ref(show_epg, day=0, channel_id=each.get("channel_id"))
+                        catchup_uri = Route.ref(show_epg, 0, each.get("channel_id"))
                         catchup_action = f"Container.Update({catchup_uri})"
                         
-                        litm.add_context_menu([
+                        litm.context.menu([
                             ("Catchup", catchup_action),
                             ("Record Live Stream", record_action)
                         ])
