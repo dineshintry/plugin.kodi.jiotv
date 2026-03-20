@@ -184,6 +184,16 @@
 					<default>true</default>
 					<control type="toggle"></control>
 				</setting>
+				<setting help="" id="Religious" label="Religious" type="boolean">
+					<level>0</level>
+					<default>true</default>
+					<control type="toggle"></control>
+				</setting>
+				<setting help="" id="Regional" label="Regional" type="boolean">
+					<level>0</level>
+					<default>true</default>
+					<control type="toggle"></control>
+				</setting>
 				<setting help="" id="applyAllSettings3" label="33024" type="action">
 					<level>0</level>
 					<data>RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/applyall/)</data>

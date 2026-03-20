@@ -226,24 +226,61 @@ def getHeaders():
 
 
 def getCachedChannels():
+    CACHE_VERSION = "v2_hybrid"  # Bump this to force re-fetch
     with PersistentDict("localdb") as db:
         channelList = db.get("channelList", False)
+        cacheVersion = db.get("_channelCacheVersion", "")
+        # Auto-invalidate stale cache from old v3.0-only code
+        if channelList and cacheVersion != CACHE_VERSION:
+            Script.log(f"[CHANNELS] Cache version mismatch ({cacheVersion} != {CACHE_VERSION}), refreshing...", lvl=Script.INFO)
+            channelList = False
         if not channelList:
             try:
-                req = urllib.request.Request(
-                    "https://jiotvapi.cdn.jio.com/apis/v3.0/getMobileChannelList/get/?langId=6&devicetype=phone&os=android&usertype=JIO&version=396",
-                    headers={"User-Agent": "okhttp/4.2.2"}
-                )
-                channelListResp = json.load(urllib.request.urlopen(req)).get("result")
-                db["channelList"] = channelListResp
+                # Primary: v1.4 API has more channels (1241+) than v3.0 (1118)
+                v14_url = "https://jiotvapi.cdn.jio.com/apis/v1.4/getMobileChannelList/get/?langId=6&devicetype=phone&os=android&usertype=JIO&version=396"
+                v30_url = "https://jiotvapi.cdn.jio.com/apis/v3.0/getMobileChannelList/get/?langId=6&devicetype=phone&os=android&usertype=JIO&version=396"
+
+                # Fetch v1.4 channels (primary source - has more channels)
+                req14 = urllib.request.Request(v14_url, headers={"User-Agent": "okhttp/4.2.2"})
+                v14_channels = json.load(urllib.request.urlopen(req14)).get("result", [])
+
+                # Fetch v3.0 channels and merge any unique ones
+                try:
+                    req30 = urllib.request.Request(v30_url, headers={"User-Agent": "okhttp/4.2.2"})
+                    v30_channels = json.load(urllib.request.urlopen(req30)).get("result", [])
+
+                    # Build set of v1.4 channel IDs for fast lookup
+                    v14_ids = {ch.get("channel_id") for ch in v14_channels}
+
+                    # Add any v3.0-only channels to the combined list
+                    extra_count = 0
+                    for ch in v30_channels:
+                        if ch.get("channel_id") not in v14_ids:
+                            v14_channels.append(ch)
+                            extra_count += 1
+
+                    if extra_count > 0:
+                        Script.log(f"[CHANNELS] Merged {extra_count} extra channels from v3.0 API", lvl=Script.INFO)
+                except Exception as e:
+                    Script.log(f"[CHANNELS] v3.0 merge failed (non-fatal): {e}", lvl=Script.INFO)
+
+                Script.log(f"[CHANNELS] Total channels loaded: {len(v14_channels)}", lvl=Script.INFO)
+                db["channelList"] = v14_channels
+                db["_channelCacheVersion"] = CACHE_VERSION
             except:
                 Script.notify("Connection error ", "Retry after sometime")
         return db.get("channelList", False)
 
 
 def getCachedDictionary():
+    CACHE_VERSION = "v2"  # Bump this to force re-fetch
     with PersistentDict("localdb") as db:
         dictionary = db.get("dictionary", False)
+        dictVersion = db.get("_dictCacheVersion", "")
+        # Auto-invalidate stale cache
+        if dictionary and dictVersion != CACHE_VERSION:
+            Script.log(f"[DICT] Cache version mismatch, refreshing...", lvl=Script.INFO)
+            dictionary = False
         if not dictionary:
             try:
                 req = urllib.request.Request(
@@ -252,7 +289,7 @@ def getCachedDictionary():
                 )
                 r = json.load(urllib.request.urlopen(req))
                 db["dictionary"] = r
-                print(db["dictionary"].get("channelCategoryMapping"))
+                db["_dictCacheVersion"] = CACHE_VERSION
             except:
                 Script.notify(
                     "dictionary url -Connection error ", "Retry after sometime"

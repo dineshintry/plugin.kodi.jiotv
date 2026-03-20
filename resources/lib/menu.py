@@ -54,8 +54,27 @@ def root(plugin):
 def show_listby(plugin, by):
     from resources.lib.constants import IMG_CONFIG
     dictionary = getCachedDictionary()
-    GENRE_MAP = dictionary.get("channelCategoryMapping")
-    LANG_MAP = dictionary.get("languageIdMapping")
+    if not dictionary:
+        yield Listitem.from_dict(
+            **{
+                "label": "Error: Unable to load dictionary. Please clean cache and retry.",
+                "callback": "",
+            }
+        )
+        return
+
+    GENRE_MAP = dictionary.get("channelCategoryMapping") or {}
+    LANG_MAP = dictionary.get("languageIdMapping") or {}
+
+    if not LANG_MAP or not GENRE_MAP:
+        yield Listitem.from_dict(
+            **{
+                "label": "Error: Dictionary data incomplete. Please clean cache and retry.",
+                "callback": "",
+            }
+        )
+        return
+
     langValues = list(LANG_MAP.values())
     langValues.append("Extra")
     CONFIG = {
@@ -77,16 +96,28 @@ def show_listby(plugin, by):
 
 def is_lang_allowed(langId, langMap):
     if langId in langMap.keys():
-        return Settings.get_boolean(langMap[langId])
+        try:
+            return Settings.get_boolean(langMap[langId])
+        except Exception:
+            return True  # If setting doesn't exist, show the channel
     else:
-        return Settings.get_boolean("Extra")
+        try:
+            return Settings.get_boolean("Extra")
+        except Exception:
+            return True
 
 
 def is_genre_allowed(id, map):
     if id in map.keys():
-        return Settings.get_boolean(map[id])
+        try:
+            return Settings.get_boolean(map[id])
+        except Exception:
+            # Genres like 'Religious', 'Regional' have no settings toggle
+            # Default to showing them rather than hiding
+            return True
     else:
-        return False
+        # Unknown genre IDs should be shown, not silently hidden
+        return True
 
 
 def isPlayAbleLang(each, LANG_MAP):
@@ -125,26 +156,32 @@ def show_category(plugin, categoryOrLang, by):
         )
         return
         
-    GENRE_MAP = dictionary.get("channelCategoryMapping")
-    LANG_MAP = dictionary.get("languageIdMapping")
+    GENRE_MAP = dictionary.get("channelCategoryMapping") or {}
+    LANG_MAP = dictionary.get("languageIdMapping") or {}
 
     def fltr(x):
-        fby = by.lower()[:-1] if by.endswith("s") else by.lower()
-        if fby == "genre":
-            return GENRE_MAP[
-                str(x.get("channelCategoryId"))
-            ] == categoryOrLang and isPlayAbleLang(x, LANG_MAP)
-        else:
-            if categoryOrLang == "Extra":
-                return str(
-                    x.get("channelLanguageId")
-                ) not in LANG_MAP.keys() and isPlayAbleGenre(x, GENRE_MAP)
+        try:
+            # Skip redirect channels always
+            if x.get("channelIdForRedirect"):
+                return False
+
+            fby = by.lower()[:-1] if by.endswith("s") else by.lower()
+            if fby == "genre":
+                # Browsing by genre: match genre AND apply language filter
+                genre_id = str(x.get("channelCategoryId", ""))
+                genre_name = GENRE_MAP.get(genre_id, "")
+                return genre_name == categoryOrLang and is_lang_allowed(
+                    str(x.get("channelLanguageId", "")), LANG_MAP
+                )
             else:
-                if str(x.get("channelLanguageId")) not in LANG_MAP.keys():
-                    return False
-                return LANG_MAP[
-                    str(x.get("channelLanguageId"))
-                ] == categoryOrLang and isPlayAbleGenre(x, GENRE_MAP)
+                # Browsing by language: match language only, show ALL genres
+                lang_id = str(x.get("channelLanguageId", ""))
+                if categoryOrLang == "Extra":
+                    return lang_id not in LANG_MAP.keys()
+                else:
+                    return LANG_MAP.get(lang_id, "") == categoryOrLang
+        except Exception:
+            return False
     try:
         flist = list(filter(fltr, resp))
         if len(flist) < 1:
@@ -182,11 +219,13 @@ def show_category(plugin, categoryOrLang, by):
                     if each.get("isCatchupAvailable"):
                         # Proper CodeQuick context menu for Catchup and Recording
                         from urllib.parse import urlencode
+                        
                         record_params = {"channel_id": each.get("channel_id"), "channel_name": each.get("channel_name", "Stream")}
                         record_action = f"RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/record_live_stream/?{urlencode(record_params)})"
                         
-                        catchup_uri = Route.ref(show_epg, 0, each.get("channel_id"))
-                        catchup_action = f"Container.Update({catchup_uri})"
+                        catchup_params = {"day": 0, "channel_id": each.get("channel_id")}
+                        catchup_url = f"plugin://plugin.kodi.jiotv/resources/lib/menu/show_epg/?{urlencode(catchup_params)}"
+                        catchup_action = f"Container.Update({catchup_url})"
                         
                         litm.context.append(("Catchup", catchup_action))
                         litm.context.append(("Record Live Stream", record_action))

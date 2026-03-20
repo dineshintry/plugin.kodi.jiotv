@@ -88,5 +88,15 @@ def restoresettings(*args, **kwargs):
     from codequick import Script
     Script.notify("JioTV", "Account data restored")
 
+@Script.register
+def cleanup(*args, **kwargs):
+    from resources.lib.pvr import cleanup as _cleanup
+    return _cleanup(*args, **kwargs)
+
+@Script.register
+def record_live_stream(*args, **kwargs):
+    from resources.lib.recorder import record_live_stream as _record
+    return _record(*args, **kwargs)
+
 if __name__ == "__main__":
     run()
