@@ -88,6 +88,27 @@ def restoresettings(*args, **kwargs):
     from codequick import Script
     Script.notify("JioTV", "Account data restored")
 
+
+@Script.register
+def backupfavourites(*args, **kwargs):
+    from resources.lib.utils import backupFavourites
+    backupFavourites()
+
+@Script.register
+def restorefavourites(*args, **kwargs):
+    from resources.lib.utils import restoreFavourites
+    restoreFavourites()
+
+@Script.register
+def sharefavourites(*args, **kwargs):
+    from resources.lib.utils import shareFavourites
+    shareFavourites()
+
+@Script.register
+def importfavourites(*args, **kwargs):
+    from resources.lib.utils import importFavourites
+    importFavourites()
+
 @Script.register
 def cleanup(*args, **kwargs):
     from resources.lib.pvr import cleanup as _cleanup

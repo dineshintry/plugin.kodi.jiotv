@@ -3,9 +3,13 @@
 	<section id="plugin.kodi.jiotv">
 		<category help="" id="setup" label="33000">
 			<group id="1">
+				<setting id="migrated_quality" type="boolean">
+					<level>4</level>
+					<default>false</default>
+				</setting>
 				<setting help="" id="quality" label="33001" type="string">
 					<level>0</level>
-					<default>Best</default>
+					<default>Manual</default>
 					<constraints>
 						<options>
 							<option>Manual</option>
@@ -95,7 +99,7 @@
 				</setting>
 			</group>
 			<group id="2" label="Backup &amp; Restore">
-				<setting help="" id="backupsettings" label="Backup Account Data" type="action">
+				<setting help="" id="backupsettings" label="33050" type="action">
 					<level>0</level>
 					<data>RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/backupsettings/)</data>
 					<constraints>
@@ -105,9 +109,51 @@
 						<close>true</close>
 					</control>
 				</setting>
-				<setting help="" id="restoresettings" label="Restore Account Data" type="action">
+				<setting help="" id="restoresettings" label="33051" type="action">
 					<level>0</level>
 					<data>RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/restoresettings/)</data>
+					<constraints>
+						<allowempty>true</allowempty>
+					</constraints>
+					<control format="action" type="button">
+						<close>true</close>
+					</control>
+				</setting>
+			</group>
+			<group id="3" label="Favourites Management">
+				<setting help="" id="backupfavourites" label="33054" type="action">
+					<level>0</level>
+					<data>RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/backupfavourites/)</data>
+					<constraints>
+						<allowempty>true</allowempty>
+					</constraints>
+					<control format="action" type="button">
+						<close>true</close>
+					</control>
+				</setting>
+				<setting help="" id="restorefavourites" label="33055" type="action">
+					<level>0</level>
+					<data>RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/restorefavourites/)</data>
+					<constraints>
+						<allowempty>true</allowempty>
+					</constraints>
+					<control format="action" type="button">
+						<close>true</close>
+					</control>
+				</setting>
+				<setting help="" id="sharefavourites" label="33056" type="action">
+					<level>0</level>
+					<data>RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/sharefavourites/)</data>
+					<constraints>
+						<allowempty>true</allowempty>
+					</constraints>
+					<control format="action" type="button">
+						<close>true</close>
+					</control>
+				</setting>
+				<setting help="" id="importfavourites" label="33057" type="action">
+					<level>0</level>
+					<data>RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/importfavourites/)</data>
 					<constraints>
 						<allowempty>true</allowempty>
 					</constraints>
@@ -184,12 +230,12 @@
 					<default>true</default>
 					<control type="toggle"></control>
 				</setting>
-				<setting help="" id="Religious" label="Religious" type="boolean">
+				<setting help="" id="Religious" label="33052" type="boolean">
 					<level>0</level>
 					<default>true</default>
 					<control type="toggle"></control>
 				</setting>
-				<setting help="" id="Regional" label="Regional" type="boolean">
+				<setting help="" id="Regional" label="33053" type="boolean">
 					<level>0</level>
 					<default>true</default>
 					<control type="toggle"></control>

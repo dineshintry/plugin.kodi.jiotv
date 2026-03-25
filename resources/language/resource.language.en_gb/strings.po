@@ -216,3 +216,35 @@ msgstr ""
 msgctxt "#33049"
 msgid "Enable host header"
 msgstr ""
+
+msgctxt "#33050"
+msgid "Backup Account Settings"
+msgstr ""
+
+msgctxt "#33051"
+msgid "Restore Account Settings"
+msgstr ""
+
+msgctxt "#33052"
+msgid "Religious"
+msgstr ""
+
+msgctxt "#33053"
+msgid "Regional"
+msgstr ""
+
+msgctxt "#33054"
+msgid "Backup Favourites"
+msgstr ""
+
+msgctxt "#33055"
+msgid "Restore Favourites"
+msgstr ""
+
+msgctxt "#33056"
+msgid "Share Favourites"
+msgstr ""
+
+msgctxt "#33057"
+msgid "Import Shared Favourites"
+msgstr ""

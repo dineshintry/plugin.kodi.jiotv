@@ -454,11 +454,8 @@ def cleanLocalCache():
 def backupSettings():
     """Backup critical user settings to a persistent file to prevent loss during upgrades."""
     try:
-        profile_path = xbmcvfs.translatePath(Addon().getAddonInfo("profile"))
-        if not os.path.exists(profile_path):
-            os.makedirs(profile_path)
-            
-        backup_file = os.path.join(profile_path, ".userdata.persist")
+        # Saving directly to Kodi's root userdata folder means the backup survives an addon uninstallation
+        backup_file = xbmcvfs.translatePath("special://userdata/.jiotv_backup.json")
         
         # Collect critical data
         mobile = Addon().getSetting("mobile")
@@ -496,8 +493,7 @@ def restoreSettings():
         if current_mobile and has_headers:
             return
             
-        profile_path = xbmcvfs.translatePath(addon.getAddonInfo("profile"))
-        backup_file = os.path.join(profile_path, ".userdata.persist")
+        backup_file = xbmcvfs.translatePath("special://userdata/.jiotv_backup.json")
         
         if not os.path.exists(backup_file):
             return
@@ -526,6 +522,73 @@ def restoreSettings():
             
     except Exception as e:
         Script.log(f"[SAFETY] Failed to restore settings: {e}", lvl=Script.ERROR)
+
+
+def backupFavourites():
+    src = xbmcvfs.translatePath("special://userdata/favourites.xml")
+    dest = xbmcvfs.translatePath("special://userdata/jiotv_favourites_backup.xml")
+    if xbmcvfs.exists(src):
+        try:
+            if xbmcvfs.exists(dest):
+                xbmcvfs.delete(dest)
+            xbmcvfs.copy(src, dest)
+            Script.notify("Favourites", "Favourites backed up successfully")
+        except Exception as e:
+            Script.log(f"Failed to backup favourites: {e}", lvl=Script.ERROR)
+            Script.notify("Error", "Failed to backup favourites")
+    else:
+        Script.notify("Favourites Error", "No favourites.xml found to backup")
+
+def restoreFavourites():
+    src = xbmcvfs.translatePath("special://userdata/jiotv_favourites_backup.xml")
+    dest = xbmcvfs.translatePath("special://userdata/favourites.xml")
+    if xbmcvfs.exists(src):
+        try:
+            if xbmcvfs.exists(dest):
+                xbmcvfs.delete(dest)
+            xbmcvfs.copy(src, dest)
+            Script.notify("Favourites", "Favourites restored. Restart Kodi to apply.")
+        except Exception as e:
+            Script.log(f"Failed to restore favourites: {e}", lvl=Script.ERROR)
+            Script.notify("Error", "Failed to restore favourites")
+    else:
+        Script.notify("Favourites Error", "No backup found to restore")
+
+def shareFavourites():
+    src = xbmcvfs.translatePath("special://userdata/favourites.xml")
+    if not xbmcvfs.exists(src):
+        Script.notify("Favourites Error", "No favourites.xml found to share")
+        return
+        
+    dialog = Dialog()
+    dest_dir = dialog.browse(3, "Select folder to export favourites", "files")
+    if dest_dir:
+        # Construct path keeping Kodi VFS compatibility in mind
+        if not dest_dir.endswith('/') and not dest_dir.endswith('\\'):
+            dest_dir += '/'
+        dest = dest_dir + "favourites.xml"
+        try:
+            if xbmcvfs.exists(dest):
+                xbmcvfs.delete(dest)
+            xbmcvfs.copy(src, dest)
+            Script.notify("Favourites", "Favourites exported successfully")
+        except Exception as e:
+            Script.log(f"Failed to export favourites: {e}", lvl=Script.ERROR)
+            Script.notify("Error", "Failed to export favourites")
+
+def importFavourites():
+    dialog = Dialog()
+    src = dialog.browse(1, "Select favourites file to import", "files", ".xml")
+    if src:
+        dest = xbmcvfs.translatePath("special://userdata/favourites.xml")
+        try:
+            if xbmcvfs.exists(dest):
+                xbmcvfs.delete(dest)
+            xbmcvfs.copy(src, dest)
+            Script.notify("Favourites", "Favourites imported. Restart Kodi to apply.")
+        except Exception as e:
+            Script.log(f"Failed to import favourites: {e}", lvl=Script.ERROR)
+            Script.notify("Error", "Failed to import favourites")
 
 
 def getChannelHeaders():

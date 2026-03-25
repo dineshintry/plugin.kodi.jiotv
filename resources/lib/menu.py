@@ -29,6 +29,12 @@ def get_record_live_stream_callback():
 
 @Route.register
 def root(plugin):
+    from xbmcaddon import Addon
+    addon = Addon()
+    if addon.getSetting("migrated_quality") != "true":
+        addon.setSetting("quality", "Manual")
+        addon.setSetting("migrated_quality", "true")
+        
     yield Listitem.from_dict(
         **{
             "label": "Video on Demand",
