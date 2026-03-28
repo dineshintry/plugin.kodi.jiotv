@@ -60,6 +60,14 @@ If you previously installed the addon manually via a ZIP file and are now moving
 - **Favorites Loss**: Migrating to the repository route may remove some of your existing favorites.
 - **Clean Install**: If prompted by Kodi to "remove settings" during the upgrade/reinstall to the repository source, **select "Yes"**. This ensures a clean configuration compatible with the repository's update system.
 
+## 🛡️ Favourite & Account Management (v1.1.5+)
+
+The addon now features a highly resilient backup system to manage your account and curated channels:
+- **Resilient Account Backup**: Your login session is automatically backed up to a safe path that persists even if you uninstall or reinstall the addon.
+- **Manage Favourites**: You can now securely backup your chosen favourite channels, restore them across different devices, or share your curated list with others.
+- **Restore Shared Favourites**: Quickly import a friend's shared favourites list directly into your Kodi setup.
+
+
 ### Coexistence with other JioTV Addons
 Installing **JioTV Direct** (`plugin.kodi.jiotv`) does **not** replace or overwrite any existing JioTV addons (like `plugin.video.jiotv`). Both can be installed on the same system simultaneously.
 

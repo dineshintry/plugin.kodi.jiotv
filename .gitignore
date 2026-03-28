@@ -89,3 +89,9 @@ debug_channels.py
 test_specific_vod.py
 test_vod_endpoints.py
 simple_vod_test.py
+
+# Internal Agent Workflows
+.agents/
+.agent/
+_agents/
+_agent/
