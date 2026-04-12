@@ -7,6 +7,7 @@ import xbmc
 import xbmcgui
 import xbmcplugin
 import urlquick
+import requests
 import inputstreamhelper
 from uuid import uuid4
 from urllib.parse import urlencode
@@ -21,15 +22,15 @@ from resources.lib.utils import (
     zeeCookie,
     quality_to_enum,
     getCachedChannels,
+    get_session,
 )
 
 @Resolver.register
 @isLoggedIn
-def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=None, end=None):
+def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=None, end=None, languageId=None):
     Script.log(f"[VOD-DEBUG] PLAY function called with: channel_id={channel_id}, showtime={showtime}, srno={srno}, programId={programId}, begin={begin}, end={end}", lvl=Script.INFO)
     Script.log("[VOD-DEBUG] Please enable Kodi debug logging manually for VOD playback analysis", lvl=Script.INFO)
 
-    headerssony = getSonyHeaders()
     sony_headers = getSonyHeaders()
     try:
         is_helper = inputstreamhelper.Helper("mpd", drm="com.widevine.alpha")
@@ -75,7 +76,6 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
             "5026": "https://z5ak-cmaflive.zee5.com/cmaf/live/2105176/BigMagicELE/master.m3u8",
         }
 
-        sony_headers = getSonyHeaders()
 
         if channel_id in zee_channels:
             if channel_id == "5016":
@@ -107,16 +107,17 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
 
         else:
             chan = str(channel_id)
-            langId = ""
-            try:
-                channels = getCachedChannels()
-                if channels:
-                    for c in channels:
-                        if str(c.get("channel_id")) == chan:
-                            langId = str(c.get("channelLanguageId", ""))
-                            break
-            except Exception as e:
-                Script.log(f"Error fetching language ID: {e}", lvl=Script.ERROR)
+            langId = str(languageId) if languageId else ""
+            if not langId:
+                try:
+                    channels = getCachedChannels()
+                    if channels:
+                        for c in channels:
+                            if str(c.get("channel_id")) == chan:
+                                langId = str(c.get("channelLanguageId", ""))
+                                break
+                except Exception as e:
+                    Script.log(f"Error fetching language ID: {e}", lvl=Script.ERROR)
 
             sony_headers = getSonyHeaders(channel_id=chan, languageId=langId)
             
@@ -133,14 +134,64 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
                     "showtime": rjson.get('showtime', '')
                 })
 
-            res = urlquick.post(
-                "https://jiotvapi.media.jio.com/playback/apis/v1.1/geturl",
-                data=api_params,
-                verify=False,
-                headers=sony_headers,
-                max_age=-1,
-                raise_for_status=False
-            )
+            # Use a hard thread-level timeout for the API call.
+            # On Android TV via hotspot, socket-level timeouts don't work —
+            # TCP connects but TLS/HTTP hangs indefinitely. A thread timeout
+            # ensures we always get a result within the deadline.
+            import threading
+            import time as _time
+
+            _api_url = "https://jiotvapi.media.jio.com/playback/apis/v1.1/geturl"
+            _api_result = [None]  # mutable container for thread result
+            _api_error = [None]
+
+            def _do_api_call(session_to_use):
+                try:
+                    _api_result[0] = session_to_use.post(
+                        _api_url, data=api_params, headers=sony_headers,
+                        timeout=(10, 15)
+                    )
+                except Exception as e:
+                    _api_error[0] = e
+
+            # Attempt 1: use persistent session (fast if TLS is cached)
+            t_start = _time.time()
+            Script.log(f"[PLAY] API call starting (attempt 1)...", lvl=Script.INFO)
+            api_thread = threading.Thread(target=_do_api_call, args=(get_session(),))
+            api_thread.daemon = True
+            api_thread.start()
+            api_thread.join(timeout=20)  # Hard 20s deadline
+
+            if api_thread.is_alive() or _api_result[0] is None:
+                elapsed = _time.time() - t_start
+                Script.log(f"[PLAY] API call attempt 1 failed/timed out after {elapsed:.1f}s, retrying with fresh session...", lvl=Script.ERROR)
+
+                # Attempt 2: fresh session (new TLS connection)
+                _api_result[0] = None
+                _api_error[0] = None
+                fresh_session = requests.Session()
+                fresh_session.verify = False
+                t_start = _time.time()
+                api_thread2 = threading.Thread(target=_do_api_call, args=(fresh_session,))
+                api_thread2.daemon = True
+                api_thread2.start()
+                api_thread2.join(timeout=25)  # 25s for fresh connection
+
+                if api_thread2.is_alive() or _api_result[0] is None:
+                    elapsed = _time.time() - t_start
+                    err_msg = str(_api_error[0]) if _api_error[0] else "Connection timed out"
+                    Script.log(f"[PLAY] API call attempt 2 also failed after {elapsed:.1f}s: {err_msg}", lvl=Script.ERROR)
+                    Script.notify("Connection Failed", "JioTV API unreachable. Try WiFi or retry.")
+                    return False
+
+            if _api_error[0]:
+                Script.log(f"[PLAY] API error: {_api_error[0]}", lvl=Script.ERROR)
+                Script.notify("Connection Error", str(_api_error[0])[:100])
+                return False
+
+            res = _api_result[0]
+            elapsed = _time.time() - t_start
+            Script.log(f"[PLAY] API call completed in {elapsed:.1f}s, status={res.status_code}", lvl=Script.INFO)
 
             if res.status_code != 200:
                 Script.log(f"VOD API Error: {res.status_code} - {res.text}", lvl=Script.ERROR)
@@ -198,10 +249,34 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
         if isMpd:
             uriToUse = mpd_data.get("result", "")
             try:
-                 mpd_resp = urlquick.head(uriToUse, headers={"User-Agent": "plaYtv/7.1.5 (Linux;Android 9) ExoPlayerLib/2.11.7"}, verify=False, max_age=-1)
-                 c_dict = mpd_resp.cookies.get_dict()
-                 cookie_str = "; ".join([f"{k}={v}" for k, v in c_dict.items()])
-                 Script.log(f"[MPD] Cookies fetched: {cookie_str}", lvl=Script.INFO)
+                # Use thread-timed request — urlquick.head() hangs forever
+                # on Android hotspot because CDN domain is unreachable
+                _mpd_result = [None]
+                _mpd_error = [None]
+                def _fetch_mpd_cookies():
+                    try:
+                        _mpd_result[0] = get_session().head(
+                            uriToUse,
+                            headers={"User-Agent": "plaYtv/7.1.5 (Linux;Android 9) ExoPlayerLib/2.11.7"},
+                            timeout=(5, 10),
+                            allow_redirects=True
+                        )
+                    except Exception as e:
+                        _mpd_error[0] = e
+
+                mpd_thread = threading.Thread(target=_fetch_mpd_cookies)
+                mpd_thread.daemon = True
+                mpd_thread.start()
+                mpd_thread.join(timeout=15)
+
+                if mpd_thread.is_alive() or _mpd_result[0] is None:
+                    err = str(_mpd_error[0]) if _mpd_error[0] else "Timed out"
+                    raise Exception(f"CDN unreachable ({err})")
+
+                mpd_resp = _mpd_result[0]
+                c_dict = mpd_resp.cookies.get_dict()
+                cookie_str = "; ".join([f"{k}={v}" for k, v in c_dict.items()])
+                Script.log(f"[MPD] Cookies fetched: {cookie_str}", lvl=Script.INFO)
             except Exception as e:
                 Script.log(f"Cookie fetch failed: {e}", lvl=Script.ERROR)
 
@@ -240,20 +315,42 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
                 "user-agent": headers.get("user-agent", "jiotv"),
                 "cookie": headers["cookie"],
                 "content-type": "application/vnd.apple.mpegurl",
-                "Accesstoken": headerssony["Accesstoken"],
+                "Accesstoken": sony_headers.get("Accesstoken", ""),
             }
-            if channel_id in [
-                "5000", "5001", "5002", "5003", "5004", "5005", "5006", "5007", "5008", "5009",
-                "5010", "5011", "5012", "5013", "5014", "5015", "5016", "5017", "5018", "5019",
-                "5020", "5021", "5022", "5023", "5024", "5025", "5026",
-            ]:
-                m3u8Res = urlquick.get(
-                    uriToUse, headers=headerszee, verify=False, max_age=-1, raise_for_status=True
-                )
-            else:
-                m3u8Res = urlquick.get(
-                    uriToUse, headers=m3u8Headers, verify=False, max_age=-1, raise_for_status=True
-                )
+
+            # Thread-timed M3U8 fetch — urlquick hangs on Android hotspot
+            _m3u8_result = [None]
+            _m3u8_error = [None]
+            def _fetch_m3u8():
+                try:
+                    if channel_id in [
+                        "5000", "5001", "5002", "5003", "5004", "5005", "5006", "5007", "5008", "5009",
+                        "5010", "5011", "5012", "5013", "5014", "5015", "5016", "5017", "5018", "5019",
+                        "5020", "5021", "5022", "5023", "5024", "5025", "5026",
+                    ]:
+                        _m3u8_result[0] = get_session().get(
+                            uriToUse, headers=headerszee, timeout=(5, 15)
+                        )
+                    else:
+                        _m3u8_result[0] = get_session().get(
+                            uriToUse, headers=m3u8Headers, timeout=(5, 15)
+                        )
+                except Exception as e:
+                    _m3u8_error[0] = e
+
+            m3u8_thread = threading.Thread(target=_fetch_m3u8)
+            m3u8_thread.daemon = True
+            m3u8_thread.start()
+            m3u8_thread.join(timeout=20)
+
+            if m3u8_thread.is_alive() or _m3u8_result[0] is None:
+                err = str(_m3u8_error[0]) if _m3u8_error[0] else "Timed out"
+                Script.log(f"[PLAY] M3U8 fetch failed: {err}", lvl=Script.ERROR)
+                Script.notify("Stream Error", "CDN unreachable. Try WiFi or retry.")
+                return False
+
+            m3u8Res = _m3u8_result[0]
+            m3u8Res.raise_for_status()
 
             m3u8Headers = {k: str(v) for k, v in m3u8Headers.items() if v}
             m3u8String = m3u8Res.text
@@ -276,10 +373,7 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
             "5016", "5017", "5018", "5019", "5020", "5021", "5022",
             "5023", "5024", "5025", "5026",
         ]:
-            dialog = xbmcgui.DialogProgress()
-            dialog.create("Loading Stream", "Please wait... buffering...")
-            xbmc.sleep(5000)
-            dialog.close()
+            # Removed forced 5s buffering sleep to improve loading speed
 
             listitem = xbmcgui.ListItem(path=uriToUse)
             listitem.setProperty("IsPlayable", "true")
@@ -335,21 +429,30 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
                 else:
                     stream_headers["Cookie"] = token
             
-            props["inputstream.adaptive.stream_headers"] = urlencode(stream_headers)
-            props["inputstream.adaptive.manifest_headers"] = urlencode(stream_headers)
+            sh = urlencode(stream_headers)
+            mh = urlencode(stream_headers)
         else:
-            props["inputstream.adaptive.stream_headers"] = urlencode(headers)
-            props["inputstream.adaptive.manifest_headers"] = urlencode(headers)
+            sh = urlencode(headers)
+            mh = urlencode(headers)
+
+        props["inputstream.adaptive.stream_headers"] = sh
+        props["inputstream.adaptive.manifest_headers"] = mh
 
         from codequick import Listitem as CQListitem
+            
         return CQListitem().from_dict(
             **{
                 "label": plugin._title,
                 "art": art,
-                "callback": uriToUse + "|verifypeer=false",
+                "callback": uriToUse,
                 "properties": props
             }
         )
+    except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+        Script.log(f"[PLAY] Network timeout/connection error: {e}", lvl=Script.ERROR)
+        Script.notify("Connection Timeout", "Network too slow or JioTV blocked. Try without hotspot.")
+        return False
     except Exception as e:
-        Script.notify("headers - Error while playback , Check connection", e)
+        Script.log(f"[PLAY] Playback error: {e}", lvl=Script.ERROR)
+        Script.notify("Playback Error", str(e)[:100])
         return False

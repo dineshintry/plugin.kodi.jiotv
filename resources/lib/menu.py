@@ -218,7 +218,10 @@ def show_category(plugin, categoryOrLang, by):
                                 "clearart": IMG_CATCHUP + each.get("logoUrl", ""),
                             },
                             "callback": play,
-                            "params": {"channel_id": each.get("channel_id")},
+                            "params": {
+                                "channel_id": each.get("channel_id"),
+                                "languageId": each.get("channelLanguageId")
+                            },
                         }
                     )
                     
@@ -229,7 +232,11 @@ def show_category(plugin, categoryOrLang, by):
                         record_params = {"channel_id": each.get("channel_id"), "channel_name": each.get("channel_name", "Stream")}
                         record_action = f"RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/record_live_stream/?{urlencode(record_params)})"
                         
-                        catchup_params = {"day": 0, "channel_id": each.get("channel_id")}
+                        catchup_params = {
+                            "day": 0, 
+                            "channel_id": each.get("channel_id"),
+                            "languageId": each.get("channelLanguageId")
+                        }
                         catchup_url = f"plugin://plugin.kodi.jiotv/resources/lib/menu/show_epg/?{urlencode(catchup_params)}"
                         catchup_action = f"Container.Update({catchup_url})"
                         
@@ -245,10 +252,10 @@ def show_category(plugin, categoryOrLang, by):
 
 
 @Route.register
-def show_epg(plugin, day, channel_id):
+def show_epg(plugin, day, channel_id, languageId=None):
     play = get_play_callback()
     resp = urlquick.get(
-        CATCHUP_SRC.format(day, channel_id), max_age=-1
+        CATCHUP_SRC.format(day, channel_id), max_age=1800, timeout=15
     ).json()
     epg = sorted(resp["epg"], key=lambda show: show["startEpoch"], reverse=False)
     livetext = "[COLOR red] [ LIVE ] [/COLOR]"
@@ -257,19 +264,17 @@ def show_epg(plugin, day, channel_id):
         if not each["stbCatchupAvailable"] or each["startEpoch"] > current_epoch:
             continue
         islive = each["startEpoch"] < current_epoch and each["endEpoch"] > current_epoch
+        start_time = datetime.fromtimestamp(int(each["startEpoch"] * 0.001))
+        end_time = datetime.fromtimestamp(int(each["endEpoch"] * 0.001))
         showtime = (
-            "   " + livetext
+            "[COLOR red][LIVE][/COLOR] "
             if islive
-            else datetime.fromtimestamp(int(each["startEpoch"] * 0.001)).strftime(
-                "    [ %I:%M %p -"
-            )
-            + datetime.fromtimestamp(int(each["endEpoch"] * 0.001)).strftime(
-                " %I:%M %p ]   %a"
-            )
+            else f"[{start_time.strftime('%I:%M %p')}] "
         )
+        label = each["showname"] + " " + showtime
         yield Listitem.from_dict(
             **{
-                "label": each["showname"] + showtime,
+                "label": label,
                 "art": {
                     "thumb": IMG_CATCHUP_SHOWS + each["episodePoster"],
                     "icon": IMG_CATCHUP_SHOWS + each["episodePoster"],
@@ -277,7 +282,7 @@ def show_epg(plugin, day, channel_id):
                 },
                 "callback": play,
                 "info": {
-                    "title": each["showname"] + showtime,
+                    "title": label,
                     "originaltitle": each["showname"],
                     "tvshowtitle": each["showname"],
                     "genre": each["showGenre"],
@@ -301,6 +306,7 @@ def show_epg(plugin, day, channel_id):
                     "end": datetime.utcfromtimestamp(
                         int(each.get("endEpoch", 0) * 0.001)
                     ).strftime("%Y%m%dT%H%M%S"),
+                    "languageId": languageId
                 },
             }
         )
@@ -315,6 +321,6 @@ def show_epg(plugin, day, channel_id):
                 **{
                     "label": label,
                     "callback": Route.ref("/resources/lib/menu:show_epg"),
-                    "params": {"day": i, "channel_id": channel_id},
+                    "params": {"day": i, "channel_id": channel_id, "languageId": languageId},
                 }
             )

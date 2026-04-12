@@ -22,14 +22,79 @@ from collections import defaultdict
 import socket
 import json
 import requests
+import requests.adapters
 import re
 import ssl
 import urllib.request
 from datetime import datetime
+from urllib3.util.retry import Retry
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
+# ─── Force IPv4 ──────────────────────────────────────────────────────────────
+# On Android TV via mobile hotspot, DNS returns both IPv6 (AAAA) and IPv4 (A)
+# records. Android aggressively prefers IPv6, but hotspot doesn't route IPv6
+# traffic properly — the TCP SYN goes out but never gets a SYN-ACK, causing
+# connections to hang indefinitely. Windows prefers IPv4 which is why it works.
+#
+# This patches socket.getaddrinfo to only return IPv4 (AF_INET) results,
+# forcing all urllib3/requests connections to use IPv4.
+import socket as _socket
+_original_getaddrinfo = _socket.getaddrinfo
+
+def _ipv4_only_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    return _original_getaddrinfo(host, port, _socket.AF_INET, type, proto, flags)
+
+_socket.getaddrinfo = _ipv4_only_getaddrinfo
+
 from resources.lib.constants import CHANNELS_SRC, DICTIONARY_URL, FEATURED_SRC, VOD_SRC, VOD_CHANNELS_SRC
+
+# ─── Persistent Session ─────────────────────────────────────────────────────
+# A shared requests.Session that reuses TLS connections across calls.
+# This is critical for Android TV on mobile hotspot where initial TLS
+# handshakes can take 15+ seconds. Reusing the session avoids re-handshaking.
+#
+# The Retry adapter handles transient failures automatically.
+_retry_strategy = Retry(
+    total=2,                # 2 retries (3 attempts total)
+    backoff_factor=1,       # 1s, 2s between retries
+    status_forcelist=[429, 500, 502, 503, 504],
+    allowed_methods=["GET", "POST", "HEAD"],
+)
+_adapter = requests.adapters.HTTPAdapter(
+    max_retries=_retry_strategy,
+    pool_connections=4,     # Keep 4 connection pools
+    pool_maxsize=4,         # 4 connections per pool
+)
+
+_session = requests.Session()
+_session.verify = False
+_session.mount("https://", _adapter)
+_session.mount("http://", _adapter)
+
+# Suppress InsecureRequestWarning globally
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+
+def get_session():
+    """Return the persistent requests.Session with TLS connection reuse.
+    Critical for Android TV on mobile hotspot where TLS handshakes are slow."""
+    return _session
+
+
+# Pre-warm the TLS connection to JioTV API on module load (background thread).
+# Since reuselanguageinvoker=true, this runs once when utils.py first loads.
+# The SSL handshake is done in the background so play() doesn't have to wait.
+import threading as _threading
+def _prewarm_jiotv_tls():
+    try:
+        _session.head("https://jiotvapi.media.jio.com/", timeout=(15, 5))
+    except Exception:
+        pass  # Non-critical; if it fails, the play() call will just do the handshake
+
+_prewarm = _threading.Thread(target=_prewarm_jiotv_tls, daemon=True)
+_prewarm.start()
 
 
 def get_local_ip():
@@ -236,35 +301,31 @@ def getCachedChannels():
             channelList = False
         if not channelList:
             try:
-                # Primary: v1.4 API has more channels (1241+) than v3.0 (1118)
+                # Use urlquick with caching to speed up loading
                 v14_url = "https://jiotvapi.cdn.jio.com/apis/v1.4/getMobileChannelList/get/?langId=6&devicetype=phone&os=android&usertype=JIO&version=396"
                 v30_url = "https://jiotvapi.cdn.jio.com/apis/v3.0/getMobileChannelList/get/?langId=6&devicetype=phone&os=android&usertype=JIO&version=396"
-
-                # Fetch v1.4 channels (primary source - has more channels)
-                req14 = urllib.request.Request(v14_url, headers={"User-Agent": "okhttp/4.2.2"})
-                v14_channels = json.load(urllib.request.urlopen(req14)).get("result", [])
+                
+                headers = {"User-Agent": "okhttp/4.2.2"}
+                
+                # Fetch v1.4 channels (primary source)
+                v14_channels = urlquick.get(v14_url, headers=headers, max_age=86400, timeout=15).json().get("result", [])
 
                 # Fetch v3.0 channels and merge any unique ones
                 try:
-                    req30 = urllib.request.Request(v30_url, headers={"User-Agent": "okhttp/4.2.2"})
-                    v30_channels = json.load(urllib.request.urlopen(req30)).get("result", [])
-
+                    v30_channels = urlquick.get(v30_url, headers=headers, max_age=86400, timeout=15).json().get("result", [])
+                    
                     # Build set of v1.4 channel IDs for fast lookup
                     v14_ids = {ch.get("channel_id") for ch in v14_channels}
 
-                    # Add any v3.0-only channels to the combined list
+                    # Add any v3.0-only channels
                     extra_count = 0
                     for ch in v30_channels:
                         if ch.get("channel_id") not in v14_ids:
                             v14_channels.append(ch)
                             extra_count += 1
-
-                    if extra_count > 0:
-                        Script.log(f"[CHANNELS] Merged {extra_count} extra channels from v3.0 API", lvl=Script.INFO)
                 except Exception as e:
-                    Script.log(f"[CHANNELS] v3.0 merge failed (non-fatal): {e}", lvl=Script.INFO)
+                    Script.log(f"[CHANNELS] v3.0 merge failed: {e}", lvl=Script.INFO)
 
-                Script.log(f"[CHANNELS] Total channels loaded: {len(v14_channels)}", lvl=Script.INFO)
                 db["channelList"] = v14_channels
                 db["_channelCacheVersion"] = CACHE_VERSION
             except:
@@ -283,12 +344,14 @@ def getCachedDictionary():
             dictionary = False
         if not dictionary:
             try:
-                req = urllib.request.Request(
+                r = urlquick.get(
                     "https://jiotvapi.cdn.jio.com/apis/v1.3/dictionary/dictionary?langId=6",
-                    headers={"User-Agent": "okhttp/4.2.2"}
+                    headers={"User-Agent": "okhttp/4.2.2"},
+                    max_age=604800, # 7 days
+                    timeout=15
                 )
-                r = json.load(urllib.request.urlopen(req))
-                db["dictionary"] = r
+                import json
+                db["dictionary"] = json.loads(r.content.decode('utf-8-sig'))
                 db["_dictCacheVersion"] = CACHE_VERSION
             except:
                 Script.notify(
@@ -308,7 +371,8 @@ def getFeatured():
                 "devicetype": "phone",
                 "versionCode": "396",
             },
-            max_age=-1,
+            max_age=3600, # 1 hour
+            timeout=15
         ).json()
         return resp.get("featuredNewData", [])
     except:
@@ -408,7 +472,7 @@ def getChannelVODContent(channel_id, offset_days=0):
         
         headers = dict(headers)
         headers["User-Agent"] = "okhttp/4.2.2"
-        resp = urlquick.get(epg_url, headers=headers, verify=False, max_age=-1, timeout=15)
+        resp = urlquick.get(epg_url, headers=headers, verify=False, max_age=1800, timeout=15)
         epg_data = resp.json()
         
         vod_content = []
@@ -593,8 +657,6 @@ def importFavourites():
 
 def getChannelHeaders():
     headers = getHeaders()
-    print("printing getchannelheaders====")
-    print(headers)
     return {
         "ssoToken": headers["ssotoken"],
         "userId": headers["userid"],
@@ -697,24 +759,17 @@ def zeeCookie(zee_channelid=None):
 
     try:
         resp = requests.post(url, headers=headers, params=params, json=json_data, timeout=15)
-        print("Status:", resp.status_code)
         if resp.status_code == 403:
-            print("⚠️ Forbidden — Token or signature likely expired")
             return None
         result = resp.json()
     except Exception as e:
-        print("❌ Network error:", e)
         return None
 
     m3u8_response = result.get("keyOsDetails", {}).get("video_token")
     if not m3u8_response:
-        print("⚠️ video_token missing")
         return None
 
-    print("✅ video_token URL:", m3u8_response)
-
     cookie = "?" + m3u8_response.split("?", 1)[1] if "?" in m3u8_response else ""
-    print("->", cookie)
 
     return cookie
     

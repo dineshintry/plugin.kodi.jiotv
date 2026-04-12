@@ -195,8 +195,22 @@ def show_vod_category(plugin, category):
         )
         return
     
+    # Sort by start time (newest first)
+    vod_content = sorted(vod_content, key=lambda x: int(x.get("startEpoch", 0)), reverse=True)
+    
     for item in vod_content:
-        channel_id = item.get("channel_id")
+        start_epoch = int(item.get("startEpoch", 0))
+        end_epoch = int(item.get("endEpoch", 0))
+        if start_epoch > 0:
+            start_time = datetime.fromtimestamp(start_epoch // 1000)
+            end_time = datetime.fromtimestamp(end_epoch // 1000) if end_epoch > 0 else start_time
+            # For mixed category, include date
+            timetext = f"[{start_time.strftime('%d %b %I:%M %p')}] "
+        else:
+            timetext = ""
+
+        showname = item.get("showname", "")
+        label = showname + " " + timetext if timetext else showname
         
         info_dict = {
             "art": {
@@ -207,9 +221,9 @@ def show_vod_category(plugin, category):
                 "clearlogo": IMG_CATCHUP + item.get("logoUrl", ""),
             },
             "info": {
-                "title": item.get("showname", ""),
-                "originaltitle": item.get("showname", ""),
-                "tvshowtitle": item.get("showname", ""),
+                "title": label,
+                "originaltitle": showname,
+                "tvshowtitle": showname,
                 "genre": item.get("showGenre", ""),
                 "plot": item.get("description", ""),
                 "episodeguide": item.get("episode_desc", ""),
@@ -221,19 +235,21 @@ def show_vod_category(plugin, category):
                 "tag": item.get("keywords", ""),
                 "mediatype": "movie" if item.get("channel_category_name") == "Movies" else "episode",
                 "year": int(item.get("year", 0)) if item.get("year") and item.get("year").isdigit() else 0,
+                "sorttitle": str(start_epoch),
             },
-            "label": item.get("showname", ""),
+            "label": label,
         }
         
         if channel_id:
             info_dict["callback"] = play
             info_dict["params"] = {
                 "channel_id": channel_id,
-                "showtime": datetime.fromtimestamp(int(item.get("startEpoch", 0)) // 1000).strftime("%H%M%S"),
-                "srno": datetime.fromtimestamp(int(item.get("startEpoch", 0)) // 1000).strftime("%Y%m%d"),
-                "programId": item.get("showId") if item.get("showId") else f"CHN-{channel_id}-PRG-{datetime.fromtimestamp(int(item.get('startEpoch', 0)) // 1000).strftime('%Y%m%d%H%M')}",
-                "begin": datetime.utcfromtimestamp(int(item.get("startEpoch", 0)) // 1000).strftime("%Y%m%dT%H%M%S"),
-                "end": datetime.utcfromtimestamp(int(item.get("endEpoch", 0)) // 1000).strftime("%Y%m%dT%H%M%S"),
+                "showtime": datetime.fromtimestamp(start_epoch // 1000).strftime("%H%M%S"),
+                "srno": datetime.fromtimestamp(start_epoch // 1000).strftime("%Y%m%d"),
+                "programId": item.get("showId") if item.get("showId") else f"CHN-{channel_id}-PRG-{datetime.fromtimestamp(start_epoch // 1000).strftime('%Y%m%d%H%M')}",
+                "begin": datetime.utcfromtimestamp(start_epoch // 1000).strftime("%Y%m%dT%H%M%S"),
+                "end": datetime.utcfromtimestamp(end_epoch // 1000).strftime("%Y%m%dT%H%M%S"),
+                "languageId": item.get("channelLanguageId"),
             }
         else:
             info_dict["callback"] = ""
@@ -317,13 +333,13 @@ def show_vod_channels_by_language(plugin, language):
                         "clearart": IMG_CATCHUP + channel.get("logoUrl", ""),
                     },
                     "callback": Route.ref("/resources/lib/vod:show_vod_channel_content"),
-                    "params": {"channel_id": channel.get("channel_id", "")},
+                    "params": {"channel_id": channel.get("channel_id", ""), "languageId": channel.get("channelLanguageId")},
                 }
             )
 
 
 @Route.register
-def show_vod_channel_content(plugin, channel_id, offset_days=None):
+def show_vod_channel_content(plugin, channel_id, offset_days=None, languageId=None):
     play = get_play_callback()
     download_vod = get_download_vod_callback()
     if offset_days is not None:
@@ -338,6 +354,9 @@ def show_vod_channel_content(plugin, channel_id, offset_days=None):
             )
             return
         
+        # Sort by start time (newest first)
+        vod_content = sorted(vod_content, key=lambda x: int(x.get("startEpoch", 0)), reverse=True)
+
         for item in vod_content:
             start_epoch = item.get("startEpoch", 0)
             end_epoch = item.get("endEpoch", 0)
@@ -348,7 +367,8 @@ def show_vod_channel_content(plugin, channel_id, offset_days=None):
             try:
                 start_time = datetime.fromtimestamp(int(start_epoch) // 1000)
                 end_time = datetime.fromtimestamp(int(end_epoch) // 1000)
-                timetext = f"  [{start_time.strftime('%I:%M %p')} - {end_time.strftime('%I:%M %p')}]"
+                # Timestamp at the beginning
+                timetext = f"[{start_time.strftime('%I:%M %p')}] "
             except (ValueError, OSError):
                 timetext = ""
             
@@ -357,16 +377,17 @@ def show_vod_channel_content(plugin, channel_id, offset_days=None):
             
             if time_diff.days == 0:
                 if time_diff.seconds < 3600:
-                    time_ago = f"{time_diff.seconds // 60} minutes ago"
+                    time_ago = f"{time_diff.seconds // 60}m ago"
                 else:
-                    time_ago = f"{time_diff.seconds // 3600} hours ago"
+                    time_ago = f"{time_diff.seconds // 3600}h ago"
             else:
-                time_ago = f"{time_diff.days} days ago"
+                time_ago = f"{time_diff.days}d ago"
             
-            if timetext.strip():
-                label = f"{item.get('showname', '')} [{time_ago}]{timetext}"
+            showname = item.get('showname', '')
+            if timetext:
+                label = f"{showname} {timetext}({time_ago})"
             else:
-                label = f"{item.get('showname', '')} [{time_ago}] [NO TIME INFO]"
+                label = f"{showname} ({time_ago}) [NO TIME]"
             
             info_dict = {
                 "art": {
@@ -377,7 +398,7 @@ def show_vod_channel_content(plugin, channel_id, offset_days=None):
                     "clearlogo": IMG_CATCHUP + item.get("logoUrl", ""),
                 },
                 "info": {
-                    "title": item.get("showname", ""),
+                    "title": label,
                     "originaltitle": item.get("showname", ""),
                     "tvshowtitle": item.get("showname", ""),
                     "genre": item.get("showGenre", ""),
@@ -392,6 +413,7 @@ def show_vod_channel_content(plugin, channel_id, offset_days=None):
                     "mediatype": "episode",
                     "year": int(item.get("year", 0)) if item.get("year") and item.get("year").isdigit() else 0,
                     "date": start_time.strftime("%d.%m.%Y"),
+                    "sorttitle": str(start_epoch),
                 },
                 "label": label,
                 "callback": play,
@@ -402,6 +424,7 @@ def show_vod_channel_content(plugin, channel_id, offset_days=None):
                     "programId": item.get("showId") if item.get("showId") else f"CHN-{channel_id}-PRG-{datetime.fromtimestamp(int(item.get('startEpoch', 0)) // 1000).strftime('%Y%m%d%H%M')}",
                     "begin": datetime.utcfromtimestamp(int(item.get("startEpoch", 0)) // 1000).strftime("%Y%m%dT%H%M%S"),
                     "end": datetime.utcfromtimestamp(int(item.get("endEpoch", 0)) // 1000).strftime("%Y%m%dT%H%M%S"),
+                    "languageId": languageId,
                 },
             }
 

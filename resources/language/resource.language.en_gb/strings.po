@@ -248,3 +248,23 @@ msgstr ""
 msgctxt "#33057"
 msgid "Import Shared Favourites"
 msgstr ""
+
+msgctxt "#33058"
+msgid "Developer Tools"
+msgstr ""
+
+msgctxt "#33059"
+msgid "Start Dev Tools Server"
+msgstr ""
+
+msgctxt "#33060"
+msgid "Stop Dev Tools Server"
+msgstr ""
+
+msgctxt "#33061"
+msgid "Toggle Debug Logging"
+msgstr ""
+
+msgctxt "#33062"
+msgid "Starts a web server for bi-directional file transfer and real-time log streaming on your local network."
+msgstr ""

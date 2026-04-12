@@ -7,6 +7,10 @@
 					<level>4</level>
 					<default>false</default>
 				</setting>
+				<setting id="devserver_enabled" type="boolean">
+					<level>4</level>
+					<default>false</default>
+				</setting>
 				<setting help="" id="quality" label="33001" type="string">
 					<level>0</level>
 					<default>Manual</default>
@@ -82,7 +86,7 @@
 				</setting>
 				<setting help="" id="epgsource" label="33008" type="string">
 					<level>0</level>
-					<default>https://raw.githubusercontent.com/testingweb624/jioEpg/refs/heads/main/epg.xml.gz</default>
+					<default>https://raw.githubusercontent.com/mitthu786/tvepg/main/jiotv/epg.xml.gz</default>
 					<control format="string" type="edit">
 						<heading>33008</heading>
 					</control>
@@ -391,6 +395,42 @@
 				<setting help="" id="applyAllSettings0" label="33009" type="action">
 					<level>0</level>
 					<data>RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/applyall/)</data>
+					<constraints>
+						<allowempty>true</allowempty>
+					</constraints>
+					<control format="action" type="button">
+						<close>true</close>
+					</control>
+				</setting>
+			</group>
+		</category>
+		<category help="" id="devtools" label="33058">
+			<group id="1" label="File Transfer &amp; Logs">
+				<setting help="33062" id="start_dev_server" label="33059" type="action">
+					<level>0</level>
+					<data>RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/start_dev_server/)</data>
+					<constraints>
+						<allowempty>true</allowempty>
+					</constraints>
+					<control format="action" type="button">
+						<close>true</close>
+					</control>
+				</setting>
+				<setting help="" id="stop_dev_server" label="33060" type="action">
+					<level>0</level>
+					<data>RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/stop_dev_server/)</data>
+					<constraints>
+						<allowempty>true</allowempty>
+					</constraints>
+					<control format="action" type="button">
+						<close>true</close>
+					</control>
+				</setting>
+			</group>
+			<group id="2" label="Debugging">
+				<setting help="" id="toggle_debug" label="33061" type="action">
+					<level>0</level>
+					<data>RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/toggle_debug/)</data>
 					<constraints>
 						<allowempty>true</allowempty>
 					</constraints>

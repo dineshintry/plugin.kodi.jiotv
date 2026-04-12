@@ -115,9 +115,9 @@ def epg_setup(plugin):
     Script.notify("Please wait", "Epg setup in progress")
     pDialog = DialogProgress()
     pDialog.create("Epg setup in progress")
-    url = Settings.get_string("epgurl")
+    url = Settings.get_string("epgsource")
     if not url or (len(url) < 5):
-        url = "https://example.com/epg.xml.gz"
+        url = "https://raw.githubusercontent.com/mitthu786/tvepg/main/jiotv/epg.xml.gz"
     
     response = requests.request("GET", url, headers={}, data={})
     with open(EPG_PATH, "wb") as f:

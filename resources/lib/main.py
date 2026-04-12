@@ -119,5 +119,51 @@ def record_live_stream(*args, **kwargs):
     from resources.lib.recorder import record_live_stream as _record
     return _record(*args, **kwargs)
 
+@Script.register
+def start_dev_server(*args, **kwargs):
+    from xbmcaddon import Addon
+    import xbmcgui
+    addon = Addon()
+    addon.setSetting("devserver_enabled", "true")
+    # Give service.py a moment to start the server
+    import xbmc
+    xbmc.sleep(1500)
+    from resources.lib.devtools import get_local_ip
+    port = 48997  # Default port
+    ip = get_local_ip()
+    url = f"http://{ip}:{port}/"
+    xbmcgui.Dialog().ok(
+        "Dev Tools Server",
+        f"Server is starting at:\n\n[B]{url}[/B]\n\n"
+        f"Open this URL in your laptop/phone browser.\n"
+        f"• File Manager: browse, upload, download files\n"
+        f"• Live Logs: stream Kodi logs in real-time"
+    )
+
+@Script.register
+def stop_dev_server(*args, **kwargs):
+    from xbmcaddon import Addon
+    addon = Addon()
+    addon.setSetting("devserver_enabled", "false")
+    from codequick import Script as S
+    S.notify("Dev Tools", "Server stopped")
+
+@Script.register
+def toggle_debug(*args, **kwargs):
+    import xbmc
+    import json
+    from codequick import Script as S
+    # Read current debug state
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "Settings.GetSettingValue",
+               "params": {"setting": "debug.showloginfo"}}
+    result = json.loads(xbmc.executeJSONRPC(json.dumps(payload)))
+    current = result.get("result", {}).get("value", False)
+    new_val = not current
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "Settings.SetSettingValue",
+               "params": {"setting": "debug.showloginfo", "value": new_val}}
+    xbmc.executeJSONRPC(json.dumps(payload))
+    state = "ON" if new_val else "OFF"
+    S.notify("Debug Logging", f"Kodi debug logging: {state}")
+
 if __name__ == "__main__":
     run()
