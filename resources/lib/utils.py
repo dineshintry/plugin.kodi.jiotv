@@ -291,7 +291,7 @@ def getHeaders():
 
 
 def getCachedChannels():
-    CACHE_VERSION = "v2_hybrid"  # Bump this to force re-fetch
+    CACHE_VERSION = "v3.1_hybrid_v2"  # Bump this to force re-fetch
     with PersistentDict("localdb") as db:
         channelList = db.get("channelList", False)
         cacheVersion = db.get("_channelCacheVersion", "")
@@ -303,28 +303,30 @@ def getCachedChannels():
             try:
                 # Use urlquick with caching to speed up loading
                 v14_url = "https://jiotvapi.cdn.jio.com/apis/v1.4/getMobileChannelList/get/?langId=6&devicetype=phone&os=android&usertype=JIO&version=396"
-                v30_url = "https://jiotvapi.cdn.jio.com/apis/v3.0/getMobileChannelList/get/?langId=6&devicetype=phone&os=android&usertype=JIO&version=396"
+                v31_url = "https://jiotvapi.cdn.jio.com/apis/v3.1/getMobileChannelList/get/?langId=6&os=android&devicetype=phone&usertype=JIO&version=389"
                 
                 headers = {"User-Agent": "okhttp/4.2.2"}
                 
-                # Fetch v1.4 channels (primary source)
+                # Fetch v1.4 channels (primary source - contains Sony, Zee networks)
                 v14_channels = urlquick.get(v14_url, headers=headers, max_age=86400, timeout=15).json().get("result", [])
 
-                # Fetch v3.0 channels and merge any unique ones
+                # Fetch v3.1 channels (secondary source - contains Star, Disney networks) and merge
                 try:
-                    v30_channels = urlquick.get(v30_url, headers=headers, max_age=86400, timeout=15).json().get("result", [])
+                    v31_channels = urlquick.get(v31_url, headers=headers, max_age=86400, timeout=15).json().get("result", [])
                     
                     # Build set of v1.4 channel IDs for fast lookup
                     v14_ids = {ch.get("channel_id") for ch in v14_channels}
 
-                    # Add any v3.0-only channels
+                    # Add any v3.1-only channels
                     extra_count = 0
-                    for ch in v30_channels:
+                    for ch in v31_channels:
                         if ch.get("channel_id") not in v14_ids:
                             v14_channels.append(ch)
                             extra_count += 1
+                            
+                    Script.log(f"[CHANNELS] Merged {extra_count} unique channels from v3.1 into v1.4", lvl=Script.INFO)
                 except Exception as e:
-                    Script.log(f"[CHANNELS] v3.0 merge failed: {e}", lvl=Script.INFO)
+                    Script.log(f"[CHANNELS] v3.1 merge failed: {e}", lvl=Script.INFO)
 
                 db["channelList"] = v14_channels
                 db["_channelCacheVersion"] = CACHE_VERSION
