@@ -14,6 +14,10 @@
 This is a custom version of the JioTV Kodi add-on with improvements for video quality.
 It uses a direct license key fetcher with cookies for better streaming performance.
 
+This KODI addon loads channels that are available in jiotv mobile and not from jiotv+ or from any other source.
+
+Kind request to users - please check jiotv mobile addon before raising any issue to add support for channels. I can help and add channels only when it loads in jiotv mobile application and not from other sources to the addon.
+
 ## Installation Instructions
 
 1. **Open Kodi**: Launch Kodi on your device.
