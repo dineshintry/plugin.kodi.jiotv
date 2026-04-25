@@ -268,3 +268,11 @@ msgstr ""
 msgctxt "#33062"
 msgid "Starts a web server for bi-directional file transfer and real-time log streaming on your local network."
 msgstr ""
+
+msgctxt "#33063"
+msgid "Copy kodi.log to Folder"
+msgstr ""
+
+msgctxt "#33064"
+msgid "Select a destination folder to copy your kodi.log file."
+msgstr ""

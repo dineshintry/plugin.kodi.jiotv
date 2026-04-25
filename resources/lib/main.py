@@ -165,5 +165,33 @@ def toggle_debug(*args, **kwargs):
     state = "ON" if new_val else "OFF"
     S.notify("Debug Logging", f"Kodi debug logging: {state}")
 
+@Script.register
+def copy_log(*args, **kwargs):
+    import xbmcvfs
+    from xbmcgui import Dialog
+    from codequick import Script as S
+    
+    # Locate the log file
+    log_file = xbmcvfs.translatePath("special://logpath/kodi.log")
+    if not xbmcvfs.exists(log_file):
+        S.notify("Error", "kodi.log not found.")
+        return
+        
+    dialog = Dialog()
+    dest_dir = dialog.browse(3, "Select folder to export kodi.log", "files")
+    if dest_dir:
+        # Construct path keeping Kodi VFS compatibility in mind
+        if not dest_dir.endswith('/') and not dest_dir.endswith('\\'):
+            dest_dir += '/'
+        dest = dest_dir + "kodi.log"
+        try:
+            if xbmcvfs.exists(dest):
+                xbmcvfs.delete(dest)
+            xbmcvfs.copy(log_file, dest)
+            S.notify("Success", "kodi.log copied successfully")
+        except Exception as e:
+            S.log(f"Failed to copy kodi.log: {e}", lvl=S.ERROR)
+            S.notify("Error", "Failed to copy kodi.log")
+
 if __name__ == "__main__":
     run()

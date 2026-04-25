@@ -426,6 +426,16 @@
 						<close>true</close>
 					</control>
 				</setting>
+				<setting help="33064" id="copy_log" label="33063" type="action">
+					<level>0</level>
+					<data>RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/copy_log/)</data>
+					<constraints>
+						<allowempty>true</allowempty>
+					</constraints>
+					<control format="action" type="button">
+						<close>true</close>
+					</control>
+				</setting>
 			</group>
 			<group id="2" label="Debugging">
 				<setting help="" id="toggle_debug" label="33061" type="action">

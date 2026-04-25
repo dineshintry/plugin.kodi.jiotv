@@ -75,7 +75,6 @@ _prewarm_thread.start()
 # IPv6 inside Kodi's advancedsettings.xml file.
 def _apply_ipv6_hotspot_patch():
     try:
-        from xbmc import translatePath
         import xml.etree.ElementTree as ET
         import os
         
@@ -83,7 +82,7 @@ def _apply_ipv6_hotspot_patch():
         try:
             from xbmcvfs import translatePath
         except ImportError:
-            pass
+            from xbmc import translatePath
             
         adv_path = translatePath("special://masterprofile/advancedsettings.xml")
         modified = False
