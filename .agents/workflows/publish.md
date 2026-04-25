@@ -7,6 +7,7 @@ Follow these steps strictly to publish a new release of the addon:
 2. Add a new section for the new version to the `<news>` block in `addon.xml` detailing the latest changes.
 3. Update `README.md` and release notes with the new features if needed.
 4. Stage and commit these changes:
+    *(WARNING: Do NOT use `git add .` as it might accidentally stage deleted vital directories like `repository.jiotvdirect/` which breaks the CI workflow! Only add the modified files).*
     // turbo
     git add addon.xml README.md
     // turbo
