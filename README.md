@@ -185,6 +185,14 @@ If you encounter issues:
 3. Verify JioTV service status
 4. Try reinstalling the add-on if problems persist
 
+### How to share Error Logs (`kodi.log`)
+If you need to report an ongoing issue, providing your `kodi.log` helps tremendously:
+1. Open **JioTV Direct** settings.
+2. Navigate to the **Developer Tools** category.
+3. Click on **Copy kodi.log to Folder**.
+4. You will be prompted to select a folder on your device. Choose an easily accessible folder (like `Downloads` or `Documents`).
+5. Share the copied `kodi.log` file securely to help us understand the problem.
+
 ## Courtesy
 Special thanks to the original creators and contributors:
 - **Botallen**
