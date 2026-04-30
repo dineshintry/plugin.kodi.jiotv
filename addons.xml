@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addons>
+<addon id="plugin.kodi.jiotv" name="JioTV Direct" version="1.2.3" provider-name="Community">
+    <requires>
+        <import addon="xbmc.python" version="3.0.0" />
+        <import addon="script.module.codequick" version="1.0.2" />
+        <import addon="script.module.inputstreamhelper" version="0.5.10" />
+        <import addon="inputstream.adaptive" minversion="2.6.6" />
+        <import addon="script.module.m3u8" version="0.5.4" />
+        <import addon="script.module.requests" version="2.27.1" />
+        <import addon="script.module.kodi-six" version="0.1.3.1" />
+
+        <!-- <import addon="script.module.web-pdb" /> -->
+    </requires>
+    <extension point="xbmc.python.pluginsource" library="addon.py">
+        <provides>video</provides>
+    </extension>
+    <extension point="xbmc.service" library="service.py" />
+    <extension point="xbmc.addon.repository" name="JioTV Direct Updates">
+        <dir>
+            <info compressed="false">https://dineshintry.github.io/plugin.kodi.jiotv/addons.xml</info>
+            <checksum>https://dineshintry.github.io/plugin.kodi.jiotv/addons.xml.md5</checksum>
+            <datadir zip="true">https://dineshintry.github.io/plugin.kodi.jiotv/</datadir>
+        </dir>
+    </extension>
+    <extension point="xbmc.addon.metadata">
+        <summary lang="en_GB">Stream Live Indian Channels &amp; VOD Content From JioTV on Kodi</summary>
+        <description lang="en_GB">Enjoy Live TV experience and Video on Demand content in Kodi.</description>
+        <language>en</language>
+        <platform>all</platform>
+        <license>MIT</license>
+        <news>
+v1.2.3
+- Optimized: OTP login validity set to 10 days to align with Jio's actual server-side token expiration.
+- Added: Automatic re-authentication flow (addon now proactively triggers the login dialog upon detecting 419 Session Expired or 401 errors).
+- Improved: Added debugging logs for login responses to help troubleshoot future authentication changes.
+
+v1.2.2
+- Fixed: Resolved `cannot import name 'translatePath' from 'xbmc'` crashing the hotspot network patch and playlist generation on Kodi 19+ (Matrix/Nexus/Omega).
+- Added: New `Copy kodi.log to Folder` utility located in `Settings` -> `Developer Tools` to easily export and share Kodi error logs.
+- Improved: Added instructions in the README on how to extract logs to aid in bug reporting.
+
+v1.2.1
+- Added: Support for 29+ Star/Nat Geo/Disney Network channels via new API endpoint hybrid unification
+- Fixed: Resolved `Languages` and `Genres` menus failing to load due to invisible JSON payload BOM crashes
+- Improved: Extensive FAQ segment implemented into documentation for troubleshooting and capability explanations
+
+v1.2.0
+- Added: Global Network Hotspot Fix (Bypasses Android IPv6 broken routes via advancedsettings for seamless hotspot streaming)
+- Fixed: VOD Catchup and Live TV intermittent freezing and connectivity errors
+- Improved: Persistent non-blocking background connections (TLS pooling) for dramatically faster start times and fluid Kodi UI
+- Fixed: EPG metadata and updated source to a more stable structure
+- Fix: Included missing UI string translations, PVR integration updates, and devtools.
+
+v1.1.5
+- Added: Favourite management features (Backup, Restore, Share, Restore-Shared)
+- Fixed: EPG data source (Updated to daily maintained source and enabled manual override in settings)
+- Improved: Backup path for account settings to persist even upon addon removal and reinstallation
+
+v1.1.4
+- Channel Fixes &amp; Core Stability
+
+v1.1.3
+- Added: Self-updating repository support (automatic updates for zip installations)
+- Fixed: VOD playback stability (addressed 400 and 403 errors)
+- Fixed: "context object" and "AttributeError" in menus
+- Fixed: Channel listing crashes (Graceful handling of missing EPG data)
+- Fixed: "ref() got unexpected keyword argument" in catchup menus
+- Improved: API request encoding and User-Agent for VOD streams
+- Improved: Default resolution settings for HD channels (1080p)
+
+v1.1.2
+- Fixed "context has no attribute: add_item" error in menus
+- Added: Safety Shield (Auto Backup &amp; Restore for account settings).
+- Fixed: Addon update failures on Windows (Faster service shutdown).
+        </news>
+        <disclaimer>This plugin is not officially commissioned/supported by Jio. The trademark "Jio"
+            is registered by "Reliance Corporate IT Park Limited (RCITPL)"</disclaimer>
+        <assets>
+            <icon>resources/icon.png</icon>
+            <fanart>resources/icon.png</fanart>
+            <screenshot>resources/icon.png</screenshot>
+            <screenshot>resources/icon.png</screenshot>
+            <screenshot>resources/icon.png</screenshot>
+        </assets>
+        <reuselanguageinvoker>true</reuselanguageinvoker>
+    </extension>
+</addon>
+<addon id="repository.jiotvdirect" name="JioTV Direct Repository" version="1.0.0" provider-name="Dineshintry">
+    <extension point="xbmc.addon.repository" name="JioTV Direct Repository">
+        <dir>
+            <info compressed="false">https://dineshintry.github.io/plugin.kodi.jiotv/addons.xml</info>
+            <checksum>https://dineshintry.github.io/plugin.kodi.jiotv/addons.xml.md5</checksum>
+            <datadir zip="true">https://dineshintry.github.io/plugin.kodi.jiotv/</datadir>
+        </dir>
+    </extension>
+    <extension point="xbmc.addon.metadata">
+        <summary>A repository for JioTV Direct Kodi addon</summary>
+        <description>Download and automatically update JioTV Direct addon from this official repository.</description>
+        <platform>all</platform>
+        <assets>
+            <icon>icon.png</icon>
+            <fanart>fanart.png</fanart>
+        </assets>
+    </extension>
+</addon>
+</addons>
