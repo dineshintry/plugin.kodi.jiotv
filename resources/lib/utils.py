@@ -125,8 +125,20 @@ def isLoggedIn(func):
             password = db.get("password")
             headers = db.get("headers")
             exp = db.get("exp", 0)
+            
         if headers and exp > time.time():
-            return func(*args, **kwargs)
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                # Catch 419 (Authentication Timeout) or 401 (Unauthorized) errors from the server
+                if "419" in str(e) or "401" in str(e):
+                    Script.log(f"[AUTH] Server returned {e}. Token likely invalidated.", lvl=Script.INFO)
+                    with PersistentDict("localdb") as db:
+                        db["exp"] = 0  # Force expiry locally
+                    Script.notify("Session Expired", "Authentication failed. Please login again.")
+                    executebuiltin("RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/auth/login/)")
+                    return False
+                raise e
         elif username and password:
             login(username, password)
             return func(*args, **kwargs)
@@ -236,9 +248,13 @@ def login(username, password, mode="unpw"):
         headers.update(_CREDS)
         with PersistentDict("localdb") as db:
             db["headers"] = headers
-            # db["exp"] = time.time() + 432000
-            db["exp"] = time.time() + 31536000
+            # Log the full response to inspect for server-side expiry hints
+            Script.log(f"[LOGIN] Response: {resp}", lvl=Script.INFO)
+            
+            # Set local expiry: 10 days for OTP (matching Jio server), 5 days for Password
+            db["exp"] = time.time() + 864000
             if mode == "unpw":
+                # Expiry for Password: 5 days (432000 seconds)
                 db["exp"] = time.time() + 432000
                 db["username"] = username
                 db["password"] = password

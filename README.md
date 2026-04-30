@@ -152,6 +152,9 @@ If you are using the PVR functionality (via IPTV Simple Client) and the program 
 **Q: Why do some channels not show a Catchup or Video on Demand (VOD) option?**
 **A:** Catchup/VOD support is populated dynamically based on Jio's licensing rights. If Jio did not secure catchup rights for a particular network (e.g., the majority of the Star Network), the option will intentionally not appear. It is only available for channels that officially broadcast `isCatchupAvailable` flags via Jio's servers.
 
+**Q: I am getting "Session Expired" or being asked to login again frequently.**
+**A:** Jio's security tokens for Mobile/OTP login are strictly valid for **10 days**. The addon is now optimized to match this window. If your session is invalidated early by Jio's servers, the addon will automatically prompt you to re-authenticate to restore your stream.
+
 **Q: Why doesn't "Best" Video Quality and Audio Quality load properly?**
 **A:** Since version `v1.1.5`, Quality is automatically forced to "**Manual**" during setup for all users. Video feeds naturally scale organically via adaptive streaming mechanisms depending on your live internet connection. Aggressively overriding this to "Best" forces Kodi to statically lock on bitrates, which is extremely resource-heavy and causes lagging since stream bitrates fluctuate heavily between channels. Leave it on Manual so adaptive streaming can manage it seamlessly for you!
 
