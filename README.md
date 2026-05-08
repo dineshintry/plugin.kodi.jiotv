@@ -152,6 +152,9 @@ If you are using the PVR functionality (via IPTV Simple Client) and the program 
 **Q: Why do some channels not show a Catchup or Video on Demand (VOD) option?**
 **A:** Catchup/VOD support is populated dynamically based on Jio's licensing rights. If Jio did not secure catchup rights for a particular network (e.g., the majority of the Star Network), the option will intentionally not appear. It is only available for channels that officially broadcast `isCatchupAvailable` flags via Jio's servers.
 
+**Q: Why do Star and Sony network channels show "Subscription Information" (e.g., 99 per month) instead of the live stream?**
+**A:** This addon mirrors exactly what is available in the official JioTV mobile app. If Jio restricts a channel's live broadcast and replaces it with subscription messages, this addon is not responsible for that and cannot bypass those restrictions. We gently ask that you enjoy whichever extra channels work for you, and not to complain if certain "premium" channels are unavailable or restricted. We show what Jio provides; nothing more, nothing less.
+
 **Q: I am getting "Session Expired" or being asked to login again frequently.**
 **A:** Jio's security tokens for Mobile/OTP login are strictly valid for **10 days**. The addon is now optimized to match this window. If your session is invalidated early by Jio's servers, the addon will automatically prompt you to re-authenticate to restore your stream.
 

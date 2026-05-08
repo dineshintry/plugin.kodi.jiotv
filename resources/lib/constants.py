@@ -4,7 +4,7 @@ from xbmcvfs import translatePath
 import xbmcaddon
 from codequick.script import Settings
 
-ADDON = xbmcaddon.Addon()
+ADDON = xbmcaddon.Addon('plugin.kodi.jiotv')
 ADDON_ID = 'plugin.kodi.jiotv'
 
 # Developer mode: Set to True during development, False for public releases.

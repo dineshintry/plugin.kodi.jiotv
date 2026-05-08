@@ -622,7 +622,7 @@ def backupSettings():
         backup_file = xbmcvfs.translatePath("special://userdata/.jiotv_backup.json")
         
         # Collect critical data
-        mobile = Addon().getSetting("mobile")
+        mobile = Addon('plugin.kodi.jiotv').getSetting("mobile")
         with PersistentDict("localdb") as db:
             headers = db.get("headers")
             username = db.get("username")
@@ -647,7 +647,7 @@ def backupSettings():
 def restoreSettings():
     """Restore critical user settings from persistent backup if they are missing."""
     try:
-        addon = Addon()
+        addon = Addon('plugin.kodi.jiotv')
         current_mobile = addon.getSetting("mobile")
         
         with PersistentDict("localdb") as db:

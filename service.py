@@ -10,6 +10,18 @@ from kodi_six import xbmcgui
 from xbmc import Monitor, executebuiltin
 from xbmcaddon import Addon
 
+import time
+import xbmcaddon
+
+# Wait for addon to be ready (prevents "Unknown addon id" errors during updates)
+_addon = None
+for i in range(20):
+    try:
+        _addon = xbmcaddon.Addon('plugin.kodi.jiotv')
+        break
+    except Exception:
+        time.sleep(1)
+
 from resources.lib import proxy
 
 

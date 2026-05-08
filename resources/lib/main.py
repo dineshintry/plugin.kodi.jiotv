@@ -123,7 +123,7 @@ def record_live_stream(*args, **kwargs):
 def start_dev_server(*args, **kwargs):
     from xbmcaddon import Addon
     import xbmcgui
-    addon = Addon()
+    addon = Addon('plugin.kodi.jiotv')
     addon.setSetting("devserver_enabled", "true")
     # Give service.py a moment to start the server
     import xbmc
@@ -143,7 +143,7 @@ def start_dev_server(*args, **kwargs):
 @Script.register
 def stop_dev_server(*args, **kwargs):
     from xbmcaddon import Addon
-    addon = Addon()
+    addon = Addon('plugin.kodi.jiotv')
     addon.setSetting("devserver_enabled", "false")
     from codequick import Script as S
     S.notify("Dev Tools", "Server stopped")

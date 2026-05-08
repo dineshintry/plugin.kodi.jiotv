@@ -30,10 +30,10 @@
         <license>MIT</license>
         <news>
 v1.2.4
-- Added: Background Token Refresh (Indefinite Login) mechanism to proactively maintain active sessions.
-- Added: "Test Session Refresh" utility in Developer Tools to verify refresh functionality.
-- Fixed: Resolved `NameError: name 'Settings' is not defined` when triggering re-authentication.
-- Improved: Captures and persists `refreshToken` for secure, indefinite session renewal.
+- Added: Background Token Refresh (Indefinite Login) mechanism to maintain active sessions.
+- Fixed: Resolved startup race condition causing `Unknown addon id` popups.
+- Added: "Test Session Refresh" utility in Developer Tools for manual verification.
+- Improved: Captures and persists `refreshToken` for secure session renewal.
 - Added: User setting to toggle background refresh behavior in Account settings.
 
 v1.2.3
