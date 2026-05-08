@@ -193,5 +193,29 @@ def copy_log(*args, **kwargs):
             S.log(f"Failed to copy kodi.log: {e}", lvl=S.ERROR)
             S.notify("Error", "Failed to copy kodi.log")
 
+@Script.register
+def toggle_debug(plugin, **kwargs):
+    from codequick.script import Settings
+    from codequick import Script
+    current = Settings.get_boolean("debug_enabled")
+    Settings.set_boolean("debug_enabled", not current)
+    Script.notify("JioTV Debug", "Debug logging " + ("Enabled" if not current else "Disabled"))
+
+@Script.register
+def manual_refresh(plugin, **kwargs):
+    from resources.lib.utils import refresh_token, refresh_sso_token
+    from codequick import Script
+    Script.notify("JioTV", "Refreshing session...")
+    
+    # Try Auth Refresh
+    auth_ok = refresh_token()
+    # Try SSO Refresh
+    sso_ok = refresh_sso_token()
+    
+    if auth_ok or sso_ok:
+        Script.notify("JioTV", "Session refreshed successfully!")
+    else:
+        Script.notify("Refresh Failed", "Check kodi.log for details.")
+
 if __name__ == "__main__":
     run()

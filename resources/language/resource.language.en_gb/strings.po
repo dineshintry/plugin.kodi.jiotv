@@ -276,3 +276,19 @@ msgstr ""
 msgctxt "#33064"
 msgid "Select a destination folder to copy your kodi.log file."
 msgstr ""
+
+msgctxt "#33065"
+msgid "Enable Background Token Refresh (Indefinite Login)"
+msgstr ""
+
+msgctxt "#33066"
+msgid "Automatically refreshes authentication tokens in the background to avoid session expiration. (Requires OTP login method)"
+msgstr ""
+
+msgctxt "#33067"
+msgid "Test Session Refresh"
+msgstr ""
+
+msgctxt "#33068"
+msgid "Manually triggers the background token refresh process to verify it is working correctly."
+msgstr ""

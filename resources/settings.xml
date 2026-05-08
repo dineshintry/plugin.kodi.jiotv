@@ -402,6 +402,11 @@
 						<close>true</close>
 					</control>
 				</setting>
+				<setting help="33066" id="bg_token_refresh" label="33065" type="boolean">
+					<level>0</level>
+					<default>true</default>
+					<control type="toggle"></control>
+				</setting>
 			</group>
 		</category>
 		<category help="" id="devtools" label="33058">
@@ -441,6 +446,16 @@
 				<setting help="" id="toggle_debug" label="33061" type="action">
 					<level>0</level>
 					<data>RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/toggle_debug/)</data>
+					<constraints>
+						<allowempty>true</allowempty>
+					</constraints>
+					<control format="action" type="button">
+						<close>true</close>
+					</control>
+				</setting>
+				<setting help="33068" id="manual_refresh" label="33067" type="action">
+					<level>0</level>
+					<data>RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/manual_refresh/)</data>
 					<constraints>
 						<allowempty>true</allowempty>
 					</constraints>

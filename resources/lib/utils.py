@@ -11,6 +11,7 @@ import time
 from functools import wraps
 from distutils.version import LooseVersion
 from codequick import Script
+from codequick.script import Settings
 from codequick.storage import PersistentDict
 from xbmc import executebuiltin
 from xbmcgui import Dialog, DialogProgress
@@ -126,12 +127,19 @@ def isLoggedIn(func):
             headers = db.get("headers")
             exp = db.get("exp", 0)
             
+        bg_refresh = Settings.get_boolean("bg_token_refresh")
+
         if headers and exp > time.time():
             try:
                 return func(*args, **kwargs)
             except Exception as e:
                 # Catch 419 (Authentication Timeout) or 401 (Unauthorized) errors from the server
                 if "419" in str(e) or "401" in str(e):
+                    if bg_refresh:
+                        Script.log("[AUTH] Token expired. Attempting background refresh...", lvl=Script.INFO)
+                        if refresh_token():
+                             return func(*args, **kwargs)
+                    
                     Script.log(f"[AUTH] Server returned {e}. Token likely invalidated.", lvl=Script.INFO)
                     with PersistentDict("localdb") as db:
                         db["exp"] = 0  # Force expiry locally
@@ -143,6 +151,11 @@ def isLoggedIn(func):
             login(username, password)
             return func(*args, **kwargs)
         elif headers and exp < time.time():
+            if bg_refresh:
+                Script.log("[AUTH] Session expired locally. Attempting SSO refresh...", lvl=Script.INFO)
+                if refresh_sso_token():
+                    return func(*args, **kwargs)
+
             Script.notify("Login Error", "Session expired. Please login again")
             executebuiltin(
                 "RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/auth/login/)"
@@ -159,6 +172,74 @@ def isLoggedIn(func):
             return False
 
     return login_wrapper
+
+
+def refresh_token():
+    """Refreshes the short-lived authToken using the refreshToken."""
+    from .constants import TSREFTOK
+    with PersistentDict("localdb") as db:
+        headers = db.get("headers", {})
+        if not headers.get("refreshtoken"):
+            return False
+        
+        payload = {
+            "appName": headers.get("appName", "RJIL_JioTV"),
+            "deviceId": headers.get("deviceid"),
+            "refreshToken": headers.get("refreshtoken")
+        }
+        
+        req_headers = {
+            "accesstoken": headers.get("authtoken"),
+            "uniqueid": headers.get("uniqueid"),
+            "Content-Type": "application/json",
+            "user-agent": "JioTV",
+            "os": "android",
+            "devicetype": "phone",
+            "versioncode": "396"
+        }
+        
+        try:
+            resp = urlquick.post(TSREFTOK, json=payload, headers=req_headers, verify=False, raise_for_status=False).json()
+            if resp.get("authToken"):
+                db["headers"]["authtoken"] = resp.get("authToken")
+                db["headers"]["refreshtoken"] = resp.get("refreshToken", headers.get("refreshtoken"))
+                # Reset local expiry to another 10 days
+                db["exp"] = time.time() + 864000
+                Script.log("[AUTH] AuthToken refreshed successfully.", lvl=Script.INFO)
+                return True
+        except Exception as e:
+            Script.log(f"[AUTH] AuthToken refresh failed: {e}", lvl=Script.ERROR)
+    return False
+
+
+def refresh_sso_token():
+    """Refreshes the long-lived ssoToken."""
+    from .constants import LOTPREF
+    with PersistentDict("localdb") as db:
+        headers = db.get("headers", {})
+        if not headers.get("ssotoken"):
+            return False
+            
+        req_headers = {
+            "deviceid": headers.get("deviceid"),
+            "ssotoken": headers.get("ssotoken"),
+            "uniqueid": headers.get("uniqueid"),
+            "User-Agent": "JioTV",
+            "os": "android",
+            "devicetype": "phone",
+            "versioncode": "396"
+        }
+        
+        try:
+            resp = urlquick.get(LOTPREF, headers=req_headers, verify=False, raise_for_status=False).json()
+            if resp.get("ssoToken"):
+                db["headers"]["ssotoken"] = resp.get("ssoToken")
+                db["exp"] = time.time() + 864000 # Extend by 10 days
+                Script.log("[AUTH] SSOToken refreshed successfully.", lvl=Script.INFO)
+                return True
+        except Exception as e:
+            Script.log(f"[AUTH] SSOToken refresh failed: {e}", lvl=Script.ERROR)
+    return False
 
 
 def login(username, password, mode="unpw"):
@@ -226,6 +307,7 @@ def login(username, password, mode="unpw"):
         "crmid": resp.get("sessionAttributes", {}).get("user", {}).get("subscriberId"),
         "subscriberid": resp.get("sessionAttributes", {}).get("user", {}).get("subscriberId"),
         "authtoken": resp.get("authToken", ""),
+        "refreshtoken": resp.get("refreshToken", ""),
         "jtoken": resp.get("jToken", ""),
         "deviceid": resp.get("deviceId", ""),
         }
