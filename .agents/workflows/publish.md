@@ -22,5 +22,13 @@ Follow these steps strictly to publish a new release of the addon:
     // turbo
     git push origin vX.Y.Z
 8. Create a GitHub Release for the newly pushed tag using the GitHub CLI (`gh`). This makes the version officially available to users.
-    // turbo
-    gh release create vX.Y.Z --title "Release vX.Y.Z" --notes "Add your release notes here."
+    *(WARNING: If your terminal context contains an expired or invalid `GITHUB_TOKEN` environment variable, the `gh` command will fail with a `401 Bad credentials` error. In this case, temporarily clear `GITHUB_TOKEN` in your shell context so that the `gh` CLI falls back to the system keyring credentials for dineshintry).*
+    * **For PowerShell:**
+      // turbo
+      $env:GITHUB_TOKEN = ""; gh release create vX.Y.Z --title "Release vX.Y.Z" --notes "Add your release notes here."
+      // turbo
+    * **For Bash / Linux / macOS:**
+      // turbo
+      GITHUB_TOKEN="" gh release create vX.Y.Z --title "Release vX.Y.Z" --notes "Add your release notes here."
+      // turbo
+
