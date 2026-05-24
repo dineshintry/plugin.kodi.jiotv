@@ -32,7 +32,6 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
     
     if is_extra == "true" or is_extra is True:
         from resources.lib.utils import getExtraChannels
-        from urllib.parse import urlencode
         extra_channels = getExtraChannels()
         chan_data = None
         for c in extra_channels:
