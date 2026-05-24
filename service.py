@@ -1,15 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import socket
-import threading
-from socketserver import ThreadingTCPServer
-
-from codequick import Script
-from codequick.script import Settings
-from kodi_six import xbmcgui
-from xbmc import Monitor, executebuiltin
-from xbmcaddon import Addon
-
 import time
 import xbmcaddon
 
@@ -21,6 +11,16 @@ for i in range(20):
         break
     except Exception:
         time.sleep(1)
+
+import socket
+import threading
+from socketserver import ThreadingTCPServer
+
+from codequick import Script
+from codequick.script import Settings
+from kodi_six import xbmcgui
+from xbmc import Monitor, executebuiltin
+from xbmcaddon import Addon
 
 from resources.lib import proxy
 

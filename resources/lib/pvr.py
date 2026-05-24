@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 import os
 import gzip
 import requests
-import urlquick
 import xml.etree.ElementTree as ET
 from codequick import Script
 from codequick.script import Settings
@@ -41,8 +40,8 @@ def m3ugen(plugin, notify="yes"):
             Script.notify("JioTV", "Error: Unable to load channel dictionary.")
         return
         
-    GENRE_MAP = dictionary.get("channelCategoryMapping")
-    LANG_MAP = dictionary.get("languageIdMapping")
+    GENRE_MAP = dictionary.get("channelCategoryMapping") or {}
+    LANG_MAP = dictionary.get("languageIdMapping") or {}
 
     m3ustr = '#EXTM3U x-tvg-url="%s"\n' % EPG_SRC
 
@@ -62,8 +61,12 @@ def m3ugen(plugin, notify="yes"):
         else:
             genre = GENRE_MAP[str(channel.get("channelCategoryId"))]
 
-        if not Settings.get_boolean(lang):
-            continue
+        try:
+            if not Settings.get_boolean(lang):
+                continue
+        except Exception:
+            # Fallback to True if the language setting key is not present in settings.xml
+            pass
 
         group = lang + ";" + genre
         _play_url = PLAY_URL + "channel_id={0}".format(channel_id)
@@ -203,6 +206,7 @@ def pvrsetup(plugin):
 
 @Script.register
 def cleanup(plugin):
+    import urlquick
     urlquick.cache_cleanup(-1)
     cleanLocalCache()
     Script.notify("Cache Cleaned", "")
