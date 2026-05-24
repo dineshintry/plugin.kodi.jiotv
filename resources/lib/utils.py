@@ -118,6 +118,10 @@ def isLoggedIn(func):
 
     @wraps(func)
     def login_wrapper(*args, **kwargs):
+        # Bypass login verification for custom/extra channels
+        if kwargs.get("is_extra") == "true" or kwargs.get("is_extra") is True:
+            return func(*args, **kwargs)
+
         # Safety Shield: Try to restore settings if they seem missing
         restoreSettings()
         
@@ -1143,3 +1147,262 @@ def _setup(m3uPath, epgUrl):
     Script.notify("IPTV setup", "Epg and playlist updated")
 
     return True
+
+
+def parse_m3u(content):
+    channels = []
+    current_channel = {}
+    
+    for line in content.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith("#EXTM3U"):
+            continue
+        if line.startswith("#EXTINF:"):
+            current_channel = {
+                "properties": {},
+                "headers": {}
+            }
+            comma_idx = line.rfind(",")
+            if comma_idx != -1:
+                current_channel["channel_name"] = line[comma_idx+1:].strip()
+                attrs_part = line[8:comma_idx].strip()
+            else:
+                current_channel["channel_name"] = "Unknown Channel"
+                attrs_part = line[8:].strip()
+                
+            attribs = re.findall(r'([\w\-]+)="([^"]*)"', attrs_part)
+            for k, v in attribs:
+                if k == "tvg-id":
+                    current_channel["channel_id"] = v
+                elif k == "tvg-logo":
+                    current_channel["logoUrl"] = v
+                elif k == "group-title":
+                    current_channel["group"] = v
+                elif k == "tvg-language":
+                    current_channel["language"] = v
+                else:
+                    current_channel[k] = v
+            if "channel_id" not in current_channel:
+                current_channel["channel_id"] = current_channel.get("tvg-name", current_channel["channel_name"])
+        elif line.startswith("#KODIPROP:"):
+            prop_part = line[10:].strip()
+            if "=" in prop_part:
+                k, v = prop_part.split("=", 1)
+                current_channel["properties"][k.strip()] = v.strip()
+        elif line.startswith("#"):
+            continue
+        else:
+            url_part = line
+            headers = {}
+            if "|" in url_part:
+                url_part, headers_part = url_part.split("|", 1)
+                from urllib.parse import parse_qsl
+                parsed_headers = parse_qsl(headers_part)
+                for kh, vh in parsed_headers:
+                    headers[kh] = vh
+            current_channel["stream_url"] = url_part
+            current_channel["headers"] = headers
+            channels.append(current_channel)
+            current_channel = {}
+            
+    return channels
+
+
+def parse_xml(content):
+    import xml.etree.ElementTree as ET
+    root = ET.fromstring(content)
+    channels = []
+    for chan_elem in root.findall(".//channel"):
+        channel = {
+            "channel_id": chan_elem.findtext("channel_id", ""),
+            "channel_name": chan_elem.findtext("channel_name", ""),
+            "logoUrl": chan_elem.findtext("logoUrl", ""),
+            "group": chan_elem.findtext("group", ""),
+            "language": chan_elem.findtext("language", ""),
+            "stream_url": chan_elem.findtext("stream_url", ""),
+            "properties": {},
+            "headers": {}
+        }
+        if not channel["channel_id"] and channel["channel_name"]:
+            channel["channel_id"] = channel["channel_name"]
+        
+        props_elem = chan_elem.find("properties")
+        if props_elem is not None:
+            for prop in props_elem.findall("property"):
+                name = prop.get("name")
+                if name:
+                    channel["properties"][name] = prop.text or ""
+                    
+        headers_elem = chan_elem.find("headers")
+        if headers_elem is not None:
+            for header in headers_elem.findall("header"):
+                name = header.get("name")
+                if name:
+                    channel["headers"][name] = header.text or ""
+                    
+        channels.append(channel)
+    return channels
+
+
+def getExtraChannels():
+    path = xbmcvfs.translatePath("special://profile/addon_data/plugin.kodi.jiotv/extra_channels.json")
+    if not os.path.exists(path):
+        try:
+            template_path = xbmcvfs.translatePath("special://home/addons/plugin.kodi.jiotv/resources/extra_channels_template.m3u")
+            if not os.path.exists(template_path):
+                template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "extra_channels_template.m3u")
+            
+            if os.path.exists(template_path):
+                with open(template_path, "r", encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+                channels = parse_m3u(content)
+                if channels:
+                    dest_dir = os.path.dirname(path)
+                    if not os.path.exists(dest_dir):
+                        os.makedirs(dest_dir)
+                    with open(path, "w", encoding="utf-8") as f:
+                        json.dump(channels, f, indent=4)
+                    return channels
+        except Exception as e:
+            Script.log(f"Auto-populating extra channels failed: {e}", lvl=Script.ERROR)
+            
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            Script.log(f"Failed to load extra channels: {e}", lvl=Script.ERROR)
+    return []
+
+
+def importExtraChannels():
+    dialog = Dialog()
+    src = dialog.browse(1, "Select Extra Channels File", "files", ".m3u|.m3u8|.json|.xml")
+    if src:
+        try:
+            if src.startswith("http"):
+                content = urlquick.get(src).content.decode("utf-8", errors="ignore")
+            else:
+                with open(src, "r", encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+                    
+            channels = []
+            if src.lower().endswith(".json"):
+                channels = json.loads(content)
+            elif src.lower().endswith(".xml"):
+                channels = parse_xml(content)
+            else:
+                channels = parse_m3u(content)
+                
+            if not channels:
+                Script.notify("Import Failed", "No valid channels found.")
+                return
+                
+            dest_dir = xbmcvfs.translatePath("special://profile/addon_data/plugin.kodi.jiotv/")
+            if not os.path.exists(dest_dir):
+                os.makedirs(dest_dir)
+                
+            dest = os.path.join(dest_dir, "extra_channels.json")
+            with open(dest, "w", encoding="utf-8") as f:
+                json.dump(channels, f, indent=4)
+                
+            try:
+                from resources.lib.pvr import m3ugen
+                m3ugen(None, notify="no")
+            except Exception as e:
+                Script.log(f"PVR auto-refresh after import failed: {e}", lvl=Script.WARNING)
+                
+            dialog.ok("Import Success", "Successfully imported {0} channels.\n\nPlease restart Kodi application or reload the add-on to apply the changes completely.".format(len(channels)))
+            
+        except Exception as e:
+            Script.log(f"Failed to import extra channels: {e}", lvl=Script.ERROR)
+            Script.notify("Error", "Failed to import: {0}".format(str(e)[:50]))
+
+
+def exportExtraChannelsTemplate():
+    src = xbmcvfs.translatePath("special://home/addons/plugin.kodi.jiotv/resources/extra_channels_template.m3u")
+    if not os.path.exists(src):
+        src = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "extra_channels_template.m3u")
+        
+    if not os.path.exists(src):
+        Script.notify("Error", "Template file not found.")
+        return
+        
+    dialog = Dialog()
+    dest_dir = dialog.browse(3, "Select folder to export template", "files")
+    if dest_dir:
+        # Construct path keeping Kodi VFS compatibility in mind
+        if not dest_dir.endswith('/') and not dest_dir.endswith('\\'):
+            dest_dir += '/'
+        dest = dest_dir + "extra_channels_template.m3u"
+        try:
+            if xbmcvfs.exists(dest):
+                xbmcvfs.delete(dest)
+            xbmcvfs.copy(src, dest)
+            Script.notify("Export Success", "Template exported successfully")
+        except Exception as e:
+            Script.log(f"Failed to export extra channels template: {e}", lvl=Script.ERROR)
+            Script.notify("Error", "Failed to export template")
+
+
+def viewReadmeDialog():
+    import xbmcgui
+    dialog = xbmcgui.Dialog()
+    options = [
+        "1. Readme (Installation & Expectations)",
+        "2. Addon Features & Integration Guide",
+        "3. Best Practices & Troubleshooting",
+        "4. Frequently Asked Questions (FAQ)"
+    ]
+    sel = dialog.select("Select Document to View", options)
+    if sel == 0:
+        show_file_in_textviewer("README.md")
+    elif sel == 1:
+        show_file_in_textviewer("mds/features.md")
+    elif sel == 2:
+        show_file_in_textviewer("mds/best_practices.md")
+    elif sel == 3:
+        show_file_in_textviewer("mds/FAQs.md")
+
+
+def clean_html_for_kodi(text):
+    import re
+    # Remove HTML comments
+    text = re.sub(r'<!--.*?-->', '', text, flags=re.DOTALL)
+    # Convert header tags to clean plain text format
+    text = re.sub(r'<h[1-6][^>]*>', '\n## ', text)
+    text = re.sub(r'</h[1-6]>', '\n', text)
+    # Convert br tags to newlines
+    text = re.sub(r'<br\s*/?>', '\n', text)
+    # Remove remaining HTML tags
+    text = re.sub(r'<[^>]+>', '', text)
+    # Clean up GitHub alerts formatting to be readable
+    text = re.sub(r'>\s*\[!(WARNING|IMPORTANT|CAUTION|NOTE|TIP)\]', r'* \1:', text)
+    # Remove excess blank lines
+    text = re.sub(r'\n\s*\n\s*\n+', '\n\n', text)
+    return text.strip()
+
+
+def show_file_in_textviewer(relative_path):
+    import xbmcgui
+    import xbmcvfs
+    path = xbmcvfs.translatePath(f"special://home/addons/plugin.kodi.jiotv/{relative_path}")
+    if not os.path.exists(path):
+        # fallback
+        path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), relative_path)
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+            cleaned_content = clean_html_for_kodi(content)
+            xbmcgui.Dialog().textviewer(os.path.basename(relative_path), cleaned_content)
+        except Exception as e:
+            Script.log(f"Failed to read doc {relative_path}: {e}", lvl=Script.ERROR)
+            Script.notify("Error", "Failed to load document")
+    else:
+        Script.notify("Error", "Document not found")
+
+
+

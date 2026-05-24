@@ -55,6 +55,27 @@ def root(plugin):
             }
         )
 
+    extra_enabled = True
+    try:
+        extra_enabled = Settings.get_boolean("extra_channels_enabled")
+    except Exception:
+        pass
+
+    if extra_enabled:
+        from resources.lib.utils import getExtraChannels
+        if getExtraChannels():
+            yield Listitem.from_dict(
+                **{
+                    "label": "Extra Channels",
+                    "art": {
+                        "thumb": addon.getAddonInfo("icon"),
+                        "icon": addon.getAddonInfo("icon"),
+                        "fanart": addon.getAddonInfo("fanart"),
+                    },
+                    "callback": Route.ref("/resources/lib/menu:show_extra_channels"),
+                }
+            )
+
 
 @Route.register
 def show_listby(plugin, by):
@@ -324,3 +345,32 @@ def show_epg(plugin, day, channel_id, languageId=None):
                     "params": {"day": i, "channel_id": channel_id, "languageId": languageId},
                 }
             )
+
+
+@Route.register
+def show_extra_channels(plugin):
+    from resources.lib.utils import getExtraChannels
+    extra_channels = getExtraChannels()
+    play = get_play_callback()
+    
+    for each in extra_channels:
+        channel_name = each.get("channel_name", "Unknown")
+        logoUrl = each.get("logoUrl", "")
+        
+        yield Listitem.from_dict(
+            **{
+                "label": channel_name,
+                "art": {
+                    "thumb": logoUrl,
+                    "icon": logoUrl,
+                    "fanart": logoUrl,
+                    "clearlogo": logoUrl,
+                    "clearart": logoUrl,
+                },
+                "callback": play,
+                "params": {
+                    "channel_id": each.get("channel_id"),
+                    "is_extra": "true"
+                },
+            }
+        )

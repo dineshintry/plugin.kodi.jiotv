@@ -1,5 +1,9 @@
-# Ignore mds folder
-mds/
+# Ignore mds folder but allow user documentation
+mds/*
+!mds/features.md
+!mds/FAQs.md
+!mds/best_practices.md
+
 
 # Ignore test_scripts folder
 test_scripts/

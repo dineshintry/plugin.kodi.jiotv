@@ -292,3 +292,21 @@ msgstr ""
 msgctxt "#33068"
 msgid "Manually triggers the background token refresh process to verify it is working correctly."
 msgstr ""
+
+msgctxt "#33070"
+msgid "Import Extra Channels (.m3u, .json, .xml)"
+msgstr ""
+
+msgctxt "#33071"
+msgid "Enable Extra Channels"
+msgstr ""
+
+msgctxt "#33072"
+msgid "Export Extra Channels Template (.m3u)"
+msgstr ""
+
+msgctxt "#33073"
+msgid "View Add-on Readme & Guides"
+msgstr ""
+
+

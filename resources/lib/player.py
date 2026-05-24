@@ -27,9 +27,65 @@ from resources.lib.utils import (
 
 @Resolver.register
 @isLoggedIn
-def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=None, end=None, languageId=None):
-    Script.log(f"[VOD-DEBUG] PLAY function called with: channel_id={channel_id}, showtime={showtime}, srno={srno}, programId={programId}, begin={begin}, end={end}", lvl=Script.INFO)
-    Script.log("[VOD-DEBUG] Please enable Kodi debug logging manually for VOD playback analysis", lvl=Script.INFO)
+def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=None, end=None, languageId=None, is_extra=None):
+    Script.log(f"[VOD-DEBUG] PLAY function called with: channel_id={channel_id}, showtime={showtime}, srno={srno}, programId={programId}, begin={begin}, end={end}, is_extra={is_extra}", lvl=Script.INFO)
+    
+    if is_extra == "true" or is_extra is True:
+        from resources.lib.utils import getExtraChannels
+        from urllib.parse import urlencode
+        extra_channels = getExtraChannels()
+        chan_data = None
+        for c in extra_channels:
+            if str(c.get("channel_id")) == str(channel_id):
+                chan_data = c
+                break
+                
+        if not chan_data:
+            Script.notify("Play Error", "Extra channel not found.")
+            return False
+            
+        uriToUse = chan_data.get("stream_url")
+        logoUrl = chan_data.get("logoUrl", "")
+        
+        art = {
+            "thumb": logoUrl,
+            "icon": logoUrl,
+            "fanart": logoUrl,
+            "clearlogo": logoUrl,
+            "clearart": logoUrl,
+        }
+        
+        isMpd = uriToUse.split("?")[0].endswith(".mpd")
+        
+        props = {
+            "IsPlayable": True,
+            "inputstream": "inputstream.adaptive",
+            "inputstream.adaptive.manifest_type": "mpd" if isMpd else "hls",
+        }
+        
+        # Load custom KODIPROPs with automatic standard mappings for fallbacks
+        custom_props = chan_data.get("properties", {})
+        for pk, pv in custom_props.items():
+            if pk == "inputstream.adaptive.license_type" and pv == "com.clearkey.alpha":
+                props[pk] = "org.w3.clearkey"
+            else:
+                props[pk] = pv
+        
+        # Load custom headers
+        custom_headers = chan_data.get("headers", {})
+        if custom_headers:
+            props["inputstream.adaptive.stream_headers"] = urlencode(custom_headers)
+            props["inputstream.adaptive.manifest_headers"] = urlencode(custom_headers)
+            
+        from codequick import Listitem as CQListitem
+        return CQListitem().from_dict(
+            **{
+                "label": plugin._title or chan_data.get("channel_name", "Extra Channel"),
+                "art": art,
+                "callback": uriToUse,
+                "properties": props
+            }
+        )
 
     sony_headers = getSonyHeaders()
     try:

@@ -110,6 +110,16 @@ def importfavourites(*args, **kwargs):
     importFavourites()
 
 @Script.register
+def importextrachannels(*args, **kwargs):
+    from resources.lib.utils import importExtraChannels
+    importExtraChannels()
+
+@Script.register
+def exportextrachannelstemplate(*args, **kwargs):
+    from resources.lib.utils import exportExtraChannelsTemplate
+    exportExtraChannelsTemplate()
+
+@Script.register
 def cleanup(*args, **kwargs):
     from resources.lib.pvr import cleanup as _cleanup
     return _cleanup(*args, **kwargs)
@@ -192,6 +202,11 @@ def copy_log(*args, **kwargs):
         except Exception as e:
             S.log(f"Failed to copy kodi.log: {e}", lvl=S.ERROR)
             S.notify("Error", "Failed to copy kodi.log")
+
+@Script.register
+def viewreadme(*args, **kwargs):
+    from resources.lib.utils import viewReadmeDialog
+    viewReadmeDialog()
 
 @Script.register
 def toggle_debug(plugin, **kwargs):

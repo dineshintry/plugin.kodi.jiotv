@@ -166,6 +166,33 @@
 					</control>
 				</setting>
 			</group>
+			<group id="4" label="Extra Channels">
+				<setting help="" id="extra_channels_enabled" label="33071" type="boolean">
+					<level>0</level>
+					<default>true</default>
+					<control type="toggle"></control>
+				</setting>
+				<setting help="" id="importextrachannels" label="33070" type="action">
+					<level>0</level>
+					<data>RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/importextrachannels/)</data>
+					<constraints>
+						<allowempty>true</allowempty>
+					</constraints>
+					<control format="action" type="button">
+						<close>true</close>
+					</control>
+				</setting>
+				<setting help="" id="exportextrachannelstemplate" label="33072" type="action">
+					<level>0</level>
+					<data>RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/exportextrachannelstemplate/)</data>
+					<constraints>
+						<allowempty>true</allowempty>
+					</constraints>
+					<control format="action" type="button">
+						<close>true</close>
+					</control>
+				</setting>
+			</group>
 		</category>
 		<category help="" id="genres" label="33010">
 			<group id="1">
@@ -434,6 +461,16 @@
 				<setting help="33064" id="copy_log" label="33063" type="action">
 					<level>0</level>
 					<data>RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/copy_log/)</data>
+					<constraints>
+						<allowempty>true</allowempty>
+					</constraints>
+					<control format="action" type="button">
+						<close>true</close>
+					</control>
+				</setting>
+				<setting help="" id="viewreadme" label="33073" type="action">
+					<level>0</level>
+					<data>RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/viewreadme/)</data>
 					<constraints>
 						<allowempty>true</allowempty>
 					</constraints>

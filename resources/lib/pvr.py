@@ -103,6 +103,27 @@ def m3ugen(plugin, notify="yes"):
             f'plugin://plugin.kodi.jiotv/resources/lib/player/play/?channel_id={cid}\n'
         )
 
+    # Append Extra/Custom Channels if enabled
+    extra_enabled = True
+    try:
+        extra_enabled = Settings.get_boolean("extra_channels_enabled")
+    except Exception:
+        pass
+
+    if extra_enabled:
+        from resources.lib.utils import getExtraChannels
+        extra_chans = getExtraChannels()
+        for extra in extra_chans:
+            ecid = extra.get("channel_id")
+            ename = extra.get("channel_name", "Extra Channel")
+            elogo = extra.get("logoUrl", "")
+            egroup = extra.get("group", "General")
+            
+            m3ustr += (
+                f'#EXTINF:-1 tvg-id="{ecid}" tvg-name="{ename}" group-title="Extra Channels;{egroup}" tvg-logo="{elogo}",{ename}\n'
+                f'plugin://plugin.kodi.jiotv/resources/lib/player/play/?channel_id={ecid}&is_extra=true\n'
+            )
+
     with open(M3U_SRC, "w+", encoding="utf-8") as f:
         f.write(m3ustr.replace("\xa0", " "))
 

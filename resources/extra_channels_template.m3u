@@ -1,0 +1,6 @@
+#EXTM3U
+#EXTINF:-1 tvg-id="RedBullTV" tvg-name="Red Bull TV" group-title="Sports" tvg-language="English" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/b/b2/Red_Bull_TV_logo.svg",Red Bull TV
+https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8
+
+#EXTINF:-1 tvg-id="BigBuckBunny" tvg-name="Big Buck Bunny DASH" group-title="Movies" tvg-language="English" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/c/c5/Big_Buck_Bunny_Main_Poster.jpg",Big Buck Bunny DASH
+https://dash.akamaized.net/akamai/bbb_30fps/bbb_30fps.mpd
