@@ -128,6 +128,8 @@ def show_featured(plugin, id=None):
 def show_vod(plugin, category=None):
     vod_content = getVODContent()
     vod_channels = getVODChannels()
+    dictionary = getCachedDictionary()
+    LANG_MAP = dictionary.get("languageIdMapping")
     
     if not vod_content and not vod_channels:
         yield Listitem.from_dict(
@@ -138,23 +140,52 @@ def show_vod(plugin, category=None):
         )
         return
     
-    # Show VOD channels if available
+    # Show VOD channels grouped by language directly
     if vod_channels:
-        yield Listitem.from_dict(
-            **{
-                "label": "VOD Channels",
-                "art": {
-                    "thumb": IMG_CATCHUP_SHOWS + "cms/210528144026.jpg",
-                    "icon": IMG_CATCHUP_SHOWS + "cms/210528144026.jpg",
-                    "fanart": IMG_CATCHUP_SHOWS + "cms/210528144026.jpg",
-                },
-                "callback": Route.ref("/resources/lib/vod:show_vod_channels"),
-            }
-        )
+        vod_by_language = {}
+        for channel in vod_channels:
+            lang_id = str(channel.get("channelLanguageId", ""))
+            if lang_id in LANG_MAP:
+                lang_name = LANG_MAP[lang_id]
+                if lang_name not in vod_by_language:
+                    vod_by_language[lang_name] = []
+                vod_by_language[lang_name].append(channel)
+            else:
+                if "Other" not in vod_by_language:
+                    vod_by_language["Other"] = []
+                vod_by_language["Other"].append(channel)
+        
+        for lang_name, channels in sorted(vod_by_language.items()):
+            if channels:
+                yield Listitem.from_dict(
+                    **{
+                        "label": f"{lang_name} [COLOR cyan][VOD][/COLOR]",
+                        "art": {
+                            "thumb": IMG_CONFIG["Languages"].get(lang_name, {}).get("tvImg", ""),
+                            "icon": IMG_CONFIG["Languages"].get(lang_name, {}).get("tvImg", ""),
+                            "fanart": IMG_CONFIG["Languages"].get(lang_name, {}).get("promoImg", ""),
+                        },
+                        "callback": Route.ref("/resources/lib/vod:show_vod_channels_by_language"),
+                        "params": {"language": lang_name},
+                    }
+                )
+        
+        if "Other" in vod_by_language and vod_by_language["Other"]:
+            yield Listitem.from_dict(
+                **{
+                    "label": f"Other [COLOR cyan][VOD][/COLOR]",
+                    "art": {
+                        "thumb": IMG_CONFIG["Genres"].get("Other", {}).get("tvImg", ""),
+                        "icon": IMG_CONFIG["Genres"].get("Other", {}).get("tvImg", ""),
+                        "fanart": IMG_CONFIG["Genres"].get("Other", {}).get("promoImg", ""),
+                    },
+                    "callback": Route.ref("/resources/lib/vod:show_vod_channels_by_language"),
+                    "params": {"language": "Other"},
+                }
+            )
     
-    # Show VOD content by category
+    # Show VOD content by category (if any, after languages)
     if vod_content:
-        # Group content by category if categories exist
         categories = {}
         for item in vod_content:
             cat = item.get("category", "General")
@@ -240,71 +271,32 @@ def show_vod_category(plugin, category):
             "label": label,
         }
         
-        if channel_id:
+        # channel_id is not directly available for show_vod_category items,
+        # so we need to ensure it's handled correctly or passed from show_vod
+        # For now, assume channel_id is not directly relevant for category listings
+        # and will be handled when playing individual VOD items if they are channel-specific.
+        # If VOD content items themselves contain channel_id, it should be used.
+        # For this context, we will not set callback if channel_id is missing.
+        # This part of the code needs careful review if VOD content items are directly playable.
+        # Assuming VOD content items in categories are directly playable if they have necessary info.
+        
+        # Check if item itself has enough info to be playable
+        if item.get("channel_id") and item.get("startEpoch"):
             info_dict["callback"] = play
             info_dict["params"] = {
-                "channel_id": channel_id,
+                "channel_id": item.get("channel_id"),
                 "showtime": datetime.fromtimestamp(start_epoch // 1000).strftime("%H%M%S"),
                 "srno": datetime.fromtimestamp(start_epoch // 1000).strftime("%Y%m%d"),
-                "programId": item.get("showId") if item.get("showId") else f"CHN-{channel_id}-PRG-{datetime.fromtimestamp(start_epoch // 1000).strftime('%Y%m%d%H%M')}",
+                "programId": item.get("showId") if item.get("showId") else f"CHN-{item.get('channel_id')}-PRG-{datetime.fromtimestamp(start_epoch // 1000).strftime('%Y%m%d%H%M')}",
                 "begin": datetime.utcfromtimestamp(start_epoch // 1000).strftime("%Y%m%dT%H%M%S"),
                 "end": datetime.utcfromtimestamp(end_epoch // 1000).strftime("%Y%m%dT%H%M%S"),
                 "languageId": item.get("channelLanguageId"),
             }
         else:
             info_dict["callback"] = ""
-            info_dict["label"] += " [No channel info]"
+            info_dict["label"] += " [No play info]" # Indicate if not directly playable
         
         yield Listitem.from_dict(**info_dict)
-
-
-@Route.register
-def show_vod_channels(plugin):
-    vod_channels = getVODChannels()
-    dictionary = getCachedDictionary()
-    LANG_MAP = dictionary.get("languageIdMapping")
-    
-    vod_by_language = {}
-    for channel in vod_channels:
-        lang_id = str(channel.get("channelLanguageId", ""))
-        if lang_id in LANG_MAP:
-            lang_name = LANG_MAP[lang_id]
-            if lang_name not in vod_by_language:
-                vod_by_language[lang_name] = []
-            vod_by_language[lang_name].append(channel)
-        else:
-            if "Other" not in vod_by_language:
-                vod_by_language["Other"] = []
-            vod_by_language["Other"].append(channel)
-    
-    for lang_name, channels in sorted(vod_by_language.items()):
-        if channels:
-            yield Listitem.from_dict(
-                **{
-                    "label": f"{lang_name} [COLOR cyan][VOD][/COLOR]",
-                    "art": {
-                        "thumb": IMG_CONFIG["Languages"].get(lang_name, {}).get("tvImg", ""),
-                        "icon": IMG_CONFIG["Languages"].get(lang_name, {}).get("tvImg", ""),
-                        "fanart": IMG_CONFIG["Languages"].get(lang_name, {}).get("promoImg", ""),
-                    },
-                    "callback": Route.ref("/resources/lib/vod:show_vod_channels_by_language"),
-                    "params": {"language": lang_name},
-                }
-            )
-    
-    if "Other" in vod_by_language and vod_by_language["Other"]:
-        yield Listitem.from_dict(
-            **{
-                "label": f"Other [COLOR cyan][VOD][/COLOR]",
-                "art": {
-                    "thumb": IMG_CONFIG["Genres"].get("Other", {}).get("tvImg", ""),
-                    "icon": IMG_CONFIG["Genres"].get("Other", {}).get("tvImg", ""),
-                    "fanart": IMG_CONFIG["Genres"].get("Other", {}).get("promoImg", ""),
-                },
-                "callback": Route.ref("/resources/lib/vod:show_vod_channels_by_language"),
-                "params": {"language": "Other"},
-            }
-        )
 
 
 @Route.register
@@ -315,7 +307,19 @@ def show_vod_channels_by_language(plugin, language):
     
     for channel in vod_channels:
         lang_id = str(channel.get("channelLanguageId", ""))
-        if lang_id in LANG_MAP and LANG_MAP[lang_id] == language:
+        
+        # Determine if the channel matches the requested language
+        is_matching_language = False
+        if language == "Other":
+            # For "Other" category, include channels whose lang_id is not in LANG_MAP
+            if lang_id not in LANG_MAP:
+                is_matching_language = True
+        else:
+            # For specific languages, match by lang_id mapping
+            if lang_id in LANG_MAP and LANG_MAP[lang_id] == language:
+                is_matching_language = True
+
+        if is_matching_language:
             if Settings.get_boolean("number_toggle"):
                 channel_number = int(channel.get("channel_order", 0)) + 1
                 channel_name = str(channel_number) + " " + channel.get("channel_name", "")

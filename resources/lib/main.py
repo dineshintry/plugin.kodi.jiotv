@@ -9,8 +9,6 @@ from resources.lib.vod import (
     show_featured,
     show_vod,
     show_vod_category,
-    show_vod_channels,
-    show_vod_channels_by_language,
     show_vod_channel_content,
 )
 from resources.lib.menu import root, show_listby, show_category, show_epg
