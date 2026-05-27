@@ -20,6 +20,25 @@ Kind request to users - please check jiotv mobile addon before raising any issue
 
 ---
 
+## ⚠️ Important Notice Regarding Channel Availability
+
+JioTV has recently moved many channels from free access to a subscription-based model on the official JioTV mobile app.
+
+This Kodi addon only streams channels that are officially available for free through the JioTV service and accessible via the user's account/app access.
+
+As a result:
+
+- Some channels that previously worked may now display a **Subscribe** message.
+- Paid/premium channels require an active subscription on JioTV.
+- This addon does **not** bypass subscriptions, DRM, or paid access restrictions.
+- The addon will not stream paid channels for free.
+
+Please ensure you have the required JioTV subscription if you wish to access premium content through the official service.
+
+This project is intended only to provide Kodi access to legitimately accessible JioTV streams.
+
+---
+
 ## 📖 Add-on Documentation Guides
 
 The documentation has been divided into focused guides to make it easier to read. Please click on the links below to view specific instructions and details:
