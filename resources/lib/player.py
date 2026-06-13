@@ -28,6 +28,7 @@ from resources.lib.utils import (
 @Resolver.register
 @isLoggedIn
 def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=None, end=None, languageId=None, is_extra=None):
+    channel_id = str(channel_id)
     Script.log(f"[VOD-DEBUG] PLAY function called with: channel_id={channel_id}, showtime={showtime}, srno={srno}, programId={programId}, begin={begin}, end={end}, is_extra={is_extra}", lvl=Script.INFO)
     
     if is_extra == "true" or is_extra is True:
@@ -299,6 +300,16 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
         
         mpd_data = resp.get("mpd") if 'resp' in locals() else None
         isMpd = isinstance(mpd_data, dict) and mpd_data.get("result")
+        
+        hls_channels = [
+            "5000", "5001", "5002", "5003", "5004", "5005", "5006", "5007",
+            "5008", "5009", "5010", "5011", "5012", "5013", "5014", "5015",
+            "5016", "5017", "5018", "5019", "5020", "5021", "5022",
+            "5023", "5024", "5025", "5026",
+        ]
+        if channel_id in hls_channels:
+            isMpd = False
+
         cookie_str = ""
 
         if isMpd:
@@ -365,13 +376,15 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
         if qltyopt == "Manual":
             selectionType = "manual-osd"
 
-        if not isMpd and not qltyopt == "Manual":
+        if not isMpd:
             m3u8Headers = {
                 "user-agent": headers.get("user-agent", "jiotv"),
                 "cookie": headers["cookie"],
                 "content-type": "application/vnd.apple.mpegurl",
                 "Accesstoken": sony_headers.get("Accesstoken", ""),
             }
+
+        if not isMpd and not qltyopt == "Manual":
 
             # Thread-timed M3U8 fetch — urlquick hangs on Android hotspot
             _m3u8_result = [None]
@@ -421,37 +434,33 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
                     else:
                         uriToUse = uriToUse.replace(onlyUrl, tmpurl.split("?")[0])
 
-        if channel_id in [
-            "471", "154", "181", "182", "183", "289", "291", "483",
-            "5000", "5001", "5002", "5003", "5004", "5005", "5006", "5007",
-            "5008", "5009", "5010", "5011", "5012", "5013", "5014", "5015",
-            "5016", "5017", "5018", "5019", "5020", "5021", "5022",
-            "5023", "5024", "5025", "5026",
-        ]:
-            # Removed forced 5s buffering sleep to improve loading speed
-
-            listitem = xbmcgui.ListItem(path=uriToUse)
-            listitem.setProperty("IsPlayable", "true")
-            listitem.setProperty("inputstream", "inputstream.adaptive")
-            listitem.setProperty("inputstream.adaptive.manifest_type", "hls")
+        if channel_id in hls_channels:
+            props = {
+                "IsPlayable": True,
+                "inputstream": "inputstream.adaptive",
+                "inputstream.adaptive.manifest_type": "hls",
+            }
 
             if channel_id in [
                 "5000", "5001", "5002", "5003", "5004", "5005", "5006", "5007", "5008", "5009",
                 "5010", "5011", "5012", "5013", "5014", "5015", "5016", "5017", "5018", "5019",
                 "5020", "5021", "5022", "5023", "5024", "5025", "5026",
             ]:
-                listitem.setProperty("inputstream.adaptive.stream_headers", urlencode(headerszee))
-                listitem.setProperty("inputstream.adaptive.manifest_headers", urlencode(headerszee))
+                props["inputstream.adaptive.stream_headers"] = urlencode(headerszee)
+                props["inputstream.adaptive.manifest_headers"] = urlencode(headerszee)
             else:
-                listitem.setProperty("inputstream.adaptive.stream_headers", urlencode(m3u8Headers))
-                listitem.setProperty("inputstream.adaptive.manifest_headers", urlencode(m3u8Headers))
+                props["inputstream.adaptive.stream_headers"] = urlencode(m3u8Headers)
+                props["inputstream.adaptive.manifest_headers"] = urlencode(m3u8Headers)
 
-            listitem.setMimeType("application/vnd.apple.mpegurl")
-            xbmcplugin.setResolvedUrl(handle=int(sys.argv[1]), succeeded=True, listitem=listitem)
-            listitem.setContentLookup(False)
-
-            xbmc.Player().play(uriToUse, listitem)
-            return True
+            from codequick import Listitem as CQListitem
+            return CQListitem().from_dict(
+                **{
+                    "label": plugin._title,
+                    "art": art,
+                    "callback": uriToUse,
+                    "properties": props
+                }
+            )
         else:
             pass
 
@@ -492,6 +501,11 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
 
         props["inputstream.adaptive.stream_headers"] = sh
         props["inputstream.adaptive.manifest_headers"] = mh
+
+        if isMpd:
+            from urllib.parse import quote
+            ua_suffix = "|User-Agent=" + quote("plaYtv/7.1.5 (Linux;Android 9) ExoPlayerLib/2.11.7")
+            uriToUse += ua_suffix
 
         from codequick import Listitem as CQListitem
             
