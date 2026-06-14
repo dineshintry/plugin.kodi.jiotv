@@ -314,38 +314,8 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
 
         if isMpd:
             uriToUse = mpd_data.get("result", "")
-            try:
-                # Use thread-timed request — urlquick.head() hangs forever
-                # on Android hotspot because CDN domain is unreachable
-                _mpd_result = [None]
-                _mpd_error = [None]
-                def _fetch_mpd_cookies():
-                    try:
-                        _mpd_result[0] = get_session().head(
-                            uriToUse,
-                            headers={"User-Agent": "plaYtv/7.1.5 (Linux;Android 9) ExoPlayerLib/2.11.7"},
-                            timeout=(5, 10),
-                            allow_redirects=True
-                        )
-                    except Exception as e:
-                        _mpd_error[0] = e
-
-                mpd_thread = threading.Thread(target=_fetch_mpd_cookies)
-                mpd_thread.daemon = True
-                mpd_thread.start()
-                mpd_thread.join(timeout=15)
-
-                if mpd_thread.is_alive() or _mpd_result[0] is None:
-                    err = str(_mpd_error[0]) if _mpd_error[0] else "Timed out"
-                    raise Exception(f"CDN unreachable ({err})")
-
-                mpd_resp = _mpd_result[0]
-                c_dict = mpd_resp.cookies.get_dict()
-                cookie_str = "; ".join([f"{k}={v}" for k, v in c_dict.items()])
-                Script.log(f"[MPD] Cookies fetched: {cookie_str}", lvl=Script.INFO)
-            except Exception as e:
-                Script.log(f"Cookie fetch failed: {e}", lvl=Script.ERROR)
-
+            
+            # Construct license headers
             license_headers = headers.copy()
             license_headers.update({
                 "User-Agent": "PlayTV/1.0",
@@ -362,8 +332,9 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
                 "Content-Type": "application/octet-stream",
                 "Accept": "*/*",
             })
-            if cookie_str:
-                license_headers["Cookie"] = cookie_str
+            if "__hdnea__" in uriToUse:
+                token = "__hdnea__" + uriToUse.split("__hdnea__")[-1]
+                license_headers["Cookie"] = token
 
             license_config = {
                 "license_server_url": mpd_data.get("key", ""),
@@ -480,18 +451,15 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
                 "|" + urlencode(license_headers) + "|R{SSM}|"
             )
             
-            stream_headers = headers.copy()
-            stream_headers["User-Agent"] = "plaYtv/7.1.5 (Linux;Android 9) ExoPlayerLib/2.11.7"
-            if cookie_str:
-                stream_headers["Cookie"] = cookie_str
-            
-            # Ensure __hdnea__ token is present in headers if extracted from URL
+            stream_headers = {
+                "User-Agent": "plaYtv/7.1.5 (Linux;Android 9) ExoPlayerLib/2.11.7"
+            }
             if "__hdnea__" in uriToUse:
                 token = "__hdnea__" + uriToUse.split("__hdnea__")[-1]
-                if cookie_str:
-                    stream_headers["Cookie"] = f"{cookie_str}; {token}"
-                else:
-                    stream_headers["Cookie"] = token
+                stream_headers["Cookie"] = token
+            
+            # Set mimetype property to bypass CCurlFile::Stat metadata/size sniff checks
+            props["mimetype"] = "application/dash+xml"
             
             sh = urlencode(stream_headers)
             mh = urlencode(stream_headers)
@@ -501,11 +469,6 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
 
         props["inputstream.adaptive.stream_headers"] = sh
         props["inputstream.adaptive.manifest_headers"] = mh
-
-        if isMpd:
-            from urllib.parse import quote
-            ua_suffix = "|User-Agent=" + quote("plaYtv/7.1.5 (Linux;Android 9) ExoPlayerLib/2.11.7")
-            uriToUse += ua_suffix
 
         from codequick import Listitem as CQListitem
             
