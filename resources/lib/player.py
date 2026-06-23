@@ -315,6 +315,10 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
         if isMpd:
             uriToUse = mpd_data.get("result", "")
             try:
+                # Clear persistent session cookies for the CDN domain to force a fresh cookie response,
+                # ensuring connection reuse (TCP/TLS) remains active while preventing empty responses on subsequent plays.
+                get_session().cookies.clear()
+
                 # Fetch cookies directly on the main thread using GET stream=True.
                 # This is highly robust, prevents race conditions, and works across all CDNs.
                 mpd_resp = get_session().get(
@@ -324,7 +328,9 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
                     stream=True,
                     allow_redirects=True
                 )
-                c_dict = mpd_resp.cookies.get_dict()
+                c_dict = {}
+                c_dict.update(get_session().cookies.get_dict())
+                c_dict.update(mpd_resp.cookies.get_dict())
                 cookie_str = "; ".join([f"{k}={v}" for k, v in c_dict.items()])
                 mpd_resp.close()
                 Script.log(f"[MPD] Cookies fetched: {cookie_str}", lvl=Script.INFO)

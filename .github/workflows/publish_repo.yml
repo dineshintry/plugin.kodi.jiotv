@@ -123,6 +123,7 @@ jobs:
           EOF
 
       - name: Deploy to GitHub Pages
+        if: "!contains(github.ref_name, 'beta')"
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
