@@ -9,7 +9,61 @@ import base64
 import hashlib
 import time
 from functools import wraps
-from distutils.version import LooseVersion
+import re
+
+class LooseVersion(object):
+    def __init__(self, vstring):
+        self.vstring = vstring
+        components = re.findall(r'\d+|[a-zA-Z]+', vstring)
+        self.version = []
+        for c in components:
+            if c.isdigit():
+                self.version.append(int(c))
+            else:
+                self.version.append(c)
+
+    def _compare(self, other):
+        if isinstance(other, str):
+            other = LooseVersion(other)
+        elif not isinstance(other, LooseVersion):
+            return NotImplemented
+        
+        for a, b in zip(self.version, other.version):
+            if isinstance(a, int) and isinstance(b, int):
+                if a < b:
+                    return -1
+                elif a > b:
+                    return 1
+            elif isinstance(a, str) and isinstance(b, str):
+                if a < b:
+                    return -1
+                elif a > b:
+                    return 1
+            else:
+                sa, sb = str(a), str(b)
+                if sa < sb:
+                    return -1
+                elif sa > sb:
+                    return 1
+        
+        if len(self.version) < len(other.version):
+            return -1
+        elif len(self.version) > len(other.version):
+            return 1
+        return 0
+
+    def __eq__(self, other): return self._compare(other) == 0
+    def __lt__(self, other): return self._compare(other) < 0
+    def __le__(self, other): return self._compare(other) <= 0
+    def __gt__(self, other): return self._compare(other) > 0
+    def __ge__(self, other): return self._compare(other) >= 0
+    def __ne__(self, other): return self._compare(other) != 0
+
+    def __str__(self):
+        return self.vstring
+
+    def __repr__(self):
+        return "LooseVersion('%s')" % self.vstring
 from codequick import Script
 from codequick.script import Settings
 from codequick.storage import PersistentDict
