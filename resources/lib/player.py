@@ -251,6 +251,8 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
 
             if res.status_code != 200:
                 Script.log(f"VOD API Error: {res.status_code} - {res.text}", lvl=Script.ERROR)
+                if res.status_code in (401, 419):
+                    raise Exception(f"HTTP Error {res.status_code}: Token expired or unauthorized")
                 Script.notify("Playback Error", f"API returned {res.status_code}")
                 return False
 
@@ -293,6 +295,14 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
         else:
             cookie = "__hdnea__" + resp.get("result", "").split("__hdnea__")[-1]
             uriToUse = resp.get("result", "")
+
+        if "paywall" in uriToUse.lower():
+            Script.log(f"[PLAY] Subscription paywall detected in URL: {uriToUse}", lvl=Script.ERROR)
+            xbmcgui.Dialog().ok(
+                "Subscription Required",
+                "This channel requires an active JioTV subscription. Please recharge to a valid JioTV subscription plan (e.g., JioTV Pro pack or OTT pass) to get this content loading."
+            )
+            return False
 
         headers["cookie"] = cookie
         qltyopt = Settings.get_string("quality")
@@ -463,7 +473,7 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
             "IsPlayable": True,
             "inputstream": "inputstream.adaptive",
             "inputstream.adaptive.stream_selection_type": selectionType,
-            "inputstream.adaptive.chooser_resolution_secure_max": "1080",
+            "inputstream.adaptive.chooser_resolution_secure_max": "max",
             "inputstream.adaptive.max_resolution": "1080",
             "inputstream.adaptive.manifest_type": "mpd" if isMpd else "hls",
         }
@@ -511,6 +521,8 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
         Script.notify("Connection Timeout", "Network too slow or JioTV blocked. Try without hotspot.")
         return False
     except Exception as e:
+        if "419" in str(e) or "401" in str(e):
+            raise e
         Script.log(f"[PLAY] Playback error: {e}", lvl=Script.ERROR)
         Script.notify("Playback Error", str(e)[:100])
         return False

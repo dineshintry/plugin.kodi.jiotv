@@ -26,6 +26,13 @@ jobs:
           ADDON_ID="plugin.kodi.jiotv"
           REPO_ID="repository.jiotvdirect"
           
+          # Determine repo URL based on version tag (v1.3.7_beta -> https://dineshintry.github.io/plugin.kodi.jiotv-beta/)
+          if [[ "$VERSION" == *"beta"* ]]; then
+              REPO_URL="https://dineshintry.github.io/plugin.kodi.jiotv-beta/"
+          else
+              REPO_URL="https://dineshintry.github.io/plugin.kodi.jiotv/"
+          fi
+          
           # 1. Package the main Addon
           mkdir -p temp/$ADDON_ID
           cp -r addon/* temp/$ADDON_ID/
@@ -95,7 +102,7 @@ jobs:
 
                   <h2>Kodi Source URL</h2>
                   <p>Add this URL to your Kodi File Manager:</p>
-                  <div class="url-box">https://dineshintry.github.io/plugin.kodi.jiotv/</div>
+                  <div class="url-box">$REPO_URL</div>
                   
                   <div class="instructions">
                       <h2>Installation Steps</h2>
@@ -127,6 +134,16 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./repo
+          publish_branch: gh-pages
+          force_orphan: true
+
+      - name: Deploy Beta to GitHub Pages
+        if: "contains(github.ref_name, 'beta')"
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          deploy_key: ${{ secrets.BETA_DEPLOY_KEY }}
+          external_repository: dineshintry/plugin.kodi.jiotv-beta
           publish_dir: ./repo
           publish_branch: gh-pages
           force_orphan: true

@@ -184,7 +184,30 @@ class ServiceMonitor(Monitor):
 
 
 monitor = ServiceMonitor()
+last_refresh_check = 0
+
 while not monitor.abortRequested():
+    # Run the background token refresh check every hour (3600 seconds)
+    current_time = time.time()
+    if current_time - last_refresh_check > 3600:
+        last_refresh_check = current_time
+        try:
+            from codequick.script import Settings
+            if Settings.get_boolean("bg_token_refresh"):
+                from codequick.storage import PersistentDict
+                with PersistentDict("localdb") as db:
+                    exp = db.get("exp", 0)
+                
+                # If the token is set to expire in less than 2 hours (7200 seconds), refresh it!
+                if exp > 0 and (exp - current_time) < 7200:
+                    Script.log("[BG_REFRESH] Token close to expiry. Refreshing in background...", lvl=Script.INFO)
+                    from resources.lib.utils import refresh_token, refresh_sso_token
+                    if refresh_token():
+                        # Also refresh the SSO token to maintain the main SSO session
+                        refresh_sso_token()
+        except Exception as e:
+            Script.log(f"[BG_REFRESH] Error checking/refreshing token in background: {e}", lvl=Script.WARNING)
+
     if monitor.waitForAbort(1):
         handler.shutdown()
         handler.server_close()

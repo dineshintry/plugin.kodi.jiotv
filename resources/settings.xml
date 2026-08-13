@@ -434,6 +434,11 @@
 					<default>true</default>
 					<control type="toggle"></control>
 				</setting>
+				<setting help="33075" id="auto_trigger_otp" label="33074" type="boolean">
+					<level>0</level>
+					<default>false</default>
+					<control type="toggle"></control>
+				</setting>
 			</group>
 		</category>
 		<category help="" id="devtools" label="33058">

@@ -139,31 +139,35 @@ def isLoggedIn(func):
             except Exception as e:
                 # Catch 419 (Authentication Timeout) or 401 (Unauthorized) errors from the server
                 if "419" in str(e) or "401" in str(e):
-                    if bg_refresh:
-                        Script.log("[AUTH] Token expired. Attempting background refresh...", lvl=Script.INFO)
-                        if refresh_token():
-                             return func(*args, **kwargs)
+                    Script.log("[AUTH] Token expired. Attempting on-demand refresh...", lvl=Script.INFO)
+                    if refresh_token():
+                         return func(*args, **kwargs)
                     
                     Script.log(f"[AUTH] Server returned {e}. Token likely invalidated.", lvl=Script.INFO)
                     with PersistentDict("localdb") as db:
                         db["exp"] = 0  # Force expiry locally
                     Script.notify("Session Expired", "Authentication failed. Please login again.")
-                    executebuiltin("RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/auth/login/)")
+                    if Settings.get_boolean("auto_trigger_otp"):
+                        executebuiltin("RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/auth/login/)")
                     return False
                 raise e
         elif username and password:
             login(username, password)
             return func(*args, **kwargs)
         elif headers and exp < time.time():
-            if bg_refresh:
-                Script.log("[AUTH] Session expired locally. Attempting SSO refresh...", lvl=Script.INFO)
-                if refresh_sso_token():
+            Script.log("[AUTH] Session expired locally. Attempting on-demand token refresh...", lvl=Script.INFO)
+            if refresh_token():
+                return func(*args, **kwargs)
+            Script.log("[AUTH] AuthToken refresh failed. Attempting SSO refresh...", lvl=Script.INFO)
+            if refresh_sso_token():
+                if refresh_token():
                     return func(*args, **kwargs)
 
             Script.notify("Login Error", "Session expired. Please login again")
-            executebuiltin(
-                "RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/auth/login/)"
-            )
+            if Settings.get_boolean("auto_trigger_otp"):
+                executebuiltin(
+                    "RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/auth/login/)"
+                )
             return False
         else:
             Script.notify(
@@ -176,6 +180,23 @@ def isLoggedIn(func):
             return False
 
     return login_wrapper
+
+
+def get_jwt_exp(token):
+    try:
+        if not token or "." not in token:
+            return None
+        parts = token.split(".")
+        if len(parts) < 2:
+            return None
+        payload_b64 = parts[1]
+        padding = "=" * (4 - len(payload_b64) % 4)
+        payload_json = base64.b64decode(payload_b64 + padding).decode("utf-8")
+        payload = json.loads(payload_json)
+        return payload.get("exp")
+    except Exception as e:
+        Script.log(f"[AUTH] Failed to parse JWT token: {e}", lvl=Script.WARNING)
+        return None
 
 
 def refresh_token():
@@ -205,10 +226,14 @@ def refresh_token():
         try:
             resp = urlquick.post(TSREFTOK, json=payload, headers=req_headers, verify=False, raise_for_status=False).json()
             if resp.get("authToken"):
-                db["headers"]["authtoken"] = resp.get("authToken")
-                db["headers"]["refreshtoken"] = resp.get("refreshToken", headers.get("refreshtoken"))
-                # Reset local expiry to another 10 days
-                db["exp"] = time.time() + 864000
+                headers["authtoken"] = resp.get("authToken")
+                headers["refreshtoken"] = resp.get("refreshToken", headers.get("refreshtoken"))
+                db["headers"] = headers
+                
+                # Extract expiry from the JWT
+                jwt_exp = get_jwt_exp(resp.get("authToken"))
+                db["exp"] = jwt_exp if jwt_exp else (time.time() + 864000)
+                
                 Script.log("[AUTH] AuthToken refreshed successfully.", lvl=Script.INFO)
                 return True
         except Exception as e:
@@ -237,7 +262,8 @@ def refresh_sso_token():
         try:
             resp = urlquick.get(LOTPREF, headers=req_headers, verify=False, raise_for_status=False).json()
             if resp.get("ssoToken"):
-                db["headers"]["ssotoken"] = resp.get("ssoToken")
+                headers["ssotoken"] = resp.get("ssoToken")
+                db["headers"] = headers
                 db["exp"] = time.time() + 864000 # Extend by 10 days
                 Script.log("[AUTH] SSOToken refreshed successfully.", lvl=Script.INFO)
                 return True
@@ -337,11 +363,16 @@ def login(username, password, mode="unpw"):
             # Log the full response to inspect for server-side expiry hints
             Script.log(f"[LOGIN] Response: {resp}", lvl=Script.INFO)
             
-            # Set local expiry: 10 days for OTP (matching Jio server), 5 days for Password
-            db["exp"] = time.time() + 864000
+            # Extract expiry from JWT authtoken, fallback to default 10 days for OTP or 5 days for Password
+            jwt_exp = get_jwt_exp(resp.get("authToken", ""))
+            if jwt_exp:
+                db["exp"] = jwt_exp
+            else:
+                db["exp"] = time.time() + 864000
+                if mode == "unpw":
+                    db["exp"] = time.time() + 432000
+                    
             if mode == "unpw":
-                # Expiry for Password: 5 days (432000 seconds)
-                db["exp"] = time.time() + 432000
                 db["username"] = username
                 db["password"] = password
         

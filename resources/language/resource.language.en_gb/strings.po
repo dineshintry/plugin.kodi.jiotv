@@ -309,4 +309,13 @@ msgctxt "#33073"
 msgid "View Add-on Readme & Guides"
 msgstr ""
 
+msgctxt "#33074"
+msgid "Auto-trigger OTP upon expiry"
+msgstr ""
+
+msgctxt "#33075"
+msgid "Automatically triggers OTP input prompt when the JioTV session expires."
+msgstr ""
+
+
 
