@@ -26,9 +26,9 @@ jobs:
           ADDON_ID="plugin.kodi.jiotv"
           REPO_ID="repository.jiotvdirect"
           
-          # Determine repo URL based on version tag (v1.3.7_beta -> https://dineshintry.github.io/plugin.kodi.jiotv-beta/)
+          # Determine repo URL based on version tag (v1.3.7_beta -> https://dineshintry.github.io/plugin.kodi.jiotv/beta/)
           if [[ "$VERSION" == *"beta"* ]]; then
-              REPO_URL="https://dineshintry.github.io/plugin.kodi.jiotv-beta/"
+              REPO_URL="https://dineshintry.github.io/plugin.kodi.jiotv/beta/"
           else
               REPO_URL="https://dineshintry.github.io/plugin.kodi.jiotv/"
           fi
@@ -48,7 +48,7 @@ jobs:
               
               # Modify addon.xml for Beta repository
               sed -i 's/id="repository.jiotvdirect" name="JioTV Direct Repository"/id="repository.jiotvdirect.beta" name="JioTV Direct Repository (Beta)"/g' temp_repo/$REPO_ID/addon.xml
-              sed -i 's|https://dineshintry.github.io/plugin.kodi.jiotv/|https://dineshintry.github.io/plugin.kodi.jiotv-beta/|g' temp_repo/$REPO_ID/addon.xml
+              sed -i 's|https://dineshintry.github.io/plugin.kodi.jiotv/|https://dineshintry.github.io/plugin.kodi.jiotv/beta/|g' temp_repo/$REPO_ID/addon.xml
           else
               mkdir -p temp_repo/$REPO_ID
               cp -r addon/repository.jiotvdirect/* temp_repo/$REPO_ID/
@@ -148,14 +148,14 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./repo
           publish_branch: gh-pages
-          force_orphan: true
+          keep_files: true
 
       - name: Deploy Beta to GitHub Pages
         if: "contains(github.ref_name, 'beta')"
         uses: peaceiris/actions-gh-pages@v3
         with:
-          deploy_key: ${{ secrets.BETA_DEPLOY_KEY }}
-          external_repository: dineshintry/plugin.kodi.jiotv-beta
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./repo
           publish_branch: gh-pages
-          force_orphan: true
+          destination_dir: beta
+          keep_files: true
