@@ -41,8 +41,20 @@ jobs:
           cd ..
           
           # 2. Package the Repository Addon
-          mkdir -p temp_repo/$REPO_ID
-          cp -r addon/repository.jiotvdirect/* temp_repo/$REPO_ID/
+          if [[ "$VERSION" == *"beta"* ]]; then
+              REPO_ID="repository.jiotvdirect.beta"
+              mkdir -p temp_repo/$REPO_ID
+              cp -r addon/repository.jiotvdirect/* temp_repo/$REPO_ID/
+              
+              # Modify addon.xml for Beta repository
+              sed -i 's/id="repository.jiotvdirect" name="JioTV Direct Repository"/id="repository.jiotvdirect.beta" name="JioTV Direct Repository (Beta)"/g' temp_repo/$REPO_ID/addon.xml
+              sed -i 's|https://dineshintry.github.io/plugin.kodi.jiotv/|https://dineshintry.github.io/plugin.kodi.jiotv-beta/|g' temp_repo/$REPO_ID/addon.xml
+          else
+              mkdir -p temp_repo/$REPO_ID
+              cp -r addon/repository.jiotvdirect/* temp_repo/$REPO_ID/
+          fi
+          
+          mkdir -p repo/$REPO_ID
           cd temp_repo
           zip -r ../repo/$REPO_ID/$REPO_ID-1.0.0.zip $REPO_ID
           cd ..
@@ -56,13 +68,13 @@ jobs:
           cp addon/resources/fanart.png repo/$ADDON_ID/fanart.png || true
           
           mkdir -p repo/$REPO_ID/resources
-          cp addon/repository.jiotvdirect/icon.png repo/$REPO_ID/resources/icon.png || true
-          cp addon/repository.jiotvdirect/fanart.png repo/$REPO_ID/resources/fanart.png || true
-          cp addon/repository.jiotvdirect/icon.png repo/$REPO_ID/icon.png || true
+          cp temp_repo/$REPO_ID/icon.png repo/$REPO_ID/resources/icon.png || true
+          cp temp_repo/$REPO_ID/fanart.png repo/$REPO_ID/resources/fanart.png || true
+          cp temp_repo/$REPO_ID/icon.png repo/$REPO_ID/icon.png || true
           cp repo/$REPO_ID/$REPO_ID-1.0.0.zip repo/
           
           # 3. Generate combined addons.xml and md5
-          python3 addon/scripts/generate_repo.py
+          python3 addon/scripts/generate_repo.py $REPO_ID
 
           # Verification: List repo content
           ls -R repo/

@@ -3,9 +3,9 @@ import hashlib
 import sys
 
 def generate_addons_xml():
-    # Directories containing the addon sources
-    # We want to scan 'addon' (main plugin) and 'addon/repository.jiotvdirect'
-    source_dirs = ['addon', 'addon/repository.jiotvdirect']
+    # Directories containing the packaged addon sources
+    repo_id = sys.argv[1] if len(sys.argv) > 1 else 'repository.jiotvdirect'
+    source_dirs = ['temp/plugin.kodi.jiotv', f'temp_repo/{repo_id}']
     output_dir = "repo"
     addons_xml_path = os.path.join(output_dir, "addons.xml")
     addons_md5_path = os.path.join(output_dir, "addons.xml.md5")
