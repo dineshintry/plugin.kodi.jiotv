@@ -43,20 +43,26 @@ def m3ugen(plugin, notify="yes"):
     GENRE_MAP = dictionary.get("channelCategoryMapping") or {}
     LANG_MAP = dictionary.get("languageIdMapping") or {}
 
-    pvr_favs = set()
+    pvr_fav_list = []
     try:
         from codequick.storage import PersistentDict
         with PersistentDict("localdb") as db:
-            pvr_favs = set(str(x) for x in db.get("pvr_favourites", []))
+            pvr_fav_list = [str(x) for x in db.get("pvr_favourites", [])]
     except Exception:
         pass
 
+    fav_order_map = {str(cid): idx + 1 for idx, cid in enumerate(pvr_fav_list)}
+    num_favs = len(pvr_fav_list)
+
     m3ustr = '#EXTM3U x-tvg-url="%s"\n' % EPG_SRC
 
+    fav_entries = []
+    non_fav_entries = []
+
     for i, channel in enumerate(channels):
-        channel_id = int(channel.get("channel_id"))
+        channel_id = str(channel.get("channel_id"))
         
-        if 5000 <= channel_id <= 5022:
+        if 5000 <= int(channel_id) <= 5022:
             continue
 
         if str(channel.get("channelLanguageId")) not in LANG_MAP.keys():
@@ -76,10 +82,7 @@ def m3ugen(plugin, notify="yes"):
             # Fallback to True if the language setting key is not present in settings.xml
             pass
 
-        group = lang + ";" + genre
-        if str(channel_id) in pvr_favs:
-            group = "Favourites;" + group
-
+        base_group = lang + ";" + genre
         _play_url = PLAY_URL + "channel_id={0}".format(channel_id)
 
         catchup = ""
@@ -88,15 +91,27 @@ def m3ugen(plugin, notify="yes"):
                 PLAY_URL, channel_id
             )
 
-        m3ustr += M3U_CHANNEL.format(
-            tvg_id=channel_id,
-            channel_name=channel.get("channel_name"),
-            group_title=group,
-            tvg_chno=int(channel.get("channel_order", i)) + 1,
-            tvg_logo=IMG_CATCHUP + channel.get("logoUrl", ""),
-            catchup=catchup,
-            play_url=_play_url,
-        )
+        if channel_id in fav_order_map:
+            fav_entries.append({
+                "order": fav_order_map[channel_id],
+                "tvg_id": channel_id,
+                "channel_name": channel.get("channel_name"),
+                "group_title": "Favourites;" + base_group,
+                "tvg_chno": fav_order_map[channel_id],
+                "tvg_logo": IMG_CATCHUP + channel.get("logoUrl", ""),
+                "catchup": catchup,
+                "play_url": _play_url,
+            })
+        else:
+            non_fav_entries.append({
+                "default_order": int(channel.get("channel_order", i)) + 1,
+                "tvg_id": channel_id,
+                "channel_name": channel.get("channel_name"),
+                "group_title": base_group,
+                "tvg_logo": IMG_CATCHUP + channel.get("logoUrl", ""),
+                "catchup": catchup,
+                "play_url": _play_url,
+            })
 
     zee_channels = [
             {"@id": "5016", "display-name": "Zee Anmol Cinema", "icon": {"@src": "https://akamaividz2.zee5.com/image/upload/w_396,h_224,c_scale,f_webp,q_auto:eco/resources/0-9-zeeanmol/cover/1920x77021724318"}},
@@ -108,15 +123,32 @@ def m3ugen(plugin, notify="yes"):
     ]
 
     for zee in zee_channels:
-        cid = zee["@id"]
+        cid = str(zee["@id"])
         name = zee["display-name"]
         logo = zee["icon"]["@src"]
-        zee_group = "Favourites;ZEE" if str(cid) in pvr_favs else "ZEE"
+        _play_url = f"plugin://plugin.kodi.jiotv/resources/lib/player/play/?channel_id={cid}"
 
-        m3ustr += (
-            f'#EXTINF:-1 tvg-id="{cid}" tvg-name="{name}" group-title="{zee_group}" tvg-logo="{logo}",{name}\n'
-            f'plugin://plugin.kodi.jiotv/resources/lib/player/play/?channel_id={cid}\n'
-        )
+        if cid in fav_order_map:
+            fav_entries.append({
+                "order": fav_order_map[cid],
+                "tvg_id": cid,
+                "channel_name": name,
+                "group_title": "Favourites;ZEE",
+                "tvg_chno": fav_order_map[cid],
+                "tvg_logo": logo,
+                "catchup": "",
+                "play_url": _play_url,
+            })
+        else:
+            non_fav_entries.append({
+                "default_order": int(cid),
+                "tvg_id": cid,
+                "channel_name": name,
+                "group_title": "ZEE",
+                "tvg_logo": logo,
+                "catchup": "",
+                "play_url": _play_url,
+            })
 
     # Append Extra/Custom Channels if enabled
     extra_enabled = True
@@ -129,16 +161,60 @@ def m3ugen(plugin, notify="yes"):
         from resources.lib.utils import getExtraChannels
         extra_chans = getExtraChannels()
         for extra in extra_chans:
-            ecid = extra.get("channel_id")
+            ecid = str(extra.get("channel_id"))
             ename = extra.get("channel_name", "Extra Channel")
             elogo = extra.get("logoUrl", "")
             egroup = extra.get("group", "General")
-            extra_group = f"Favourites;Extra Channels;{egroup}" if str(ecid) in pvr_favs else f"Extra Channels;{egroup}"
+            _play_url = f"plugin://plugin.kodi.jiotv/resources/lib/player/play/?channel_id={ecid}&is_extra=true"
             
-            m3ustr += (
-                f'#EXTINF:-1 tvg-id="{ecid}" tvg-name="{ename}" group-title="{extra_group}" tvg-logo="{elogo}",{ename}\n'
-                f'plugin://plugin.kodi.jiotv/resources/lib/player/play/?channel_id={ecid}&is_extra=true\n'
-            )
+            if ecid in fav_order_map:
+                fav_entries.append({
+                    "order": fav_order_map[ecid],
+                    "tvg_id": ecid,
+                    "channel_name": ename,
+                    "group_title": f"Favourites;Extra Channels;{egroup}",
+                    "tvg_chno": fav_order_map[ecid],
+                    "tvg_logo": elogo,
+                    "catchup": "",
+                    "play_url": _play_url,
+                })
+            else:
+                non_fav_entries.append({
+                    "default_order": int(ecid) if ecid.isdigit() else 9000,
+                    "tvg_id": ecid,
+                    "channel_name": ename,
+                    "group_title": f"Extra Channels;{egroup}",
+                    "tvg_logo": elogo,
+                    "catchup": "",
+                    "play_url": _play_url,
+                })
+
+    # Sort favourite entries in exact user favourite list order
+    fav_entries.sort(key=lambda x: x["order"])
+
+    # Write favourite entries first to M3U
+    for item in fav_entries:
+        m3ustr += M3U_CHANNEL.format(
+            tvg_id=item["tvg_id"],
+            channel_name=item["channel_name"],
+            group_title=item["group_title"],
+            tvg_chno=item["tvg_chno"],
+            tvg_logo=item["tvg_logo"],
+            catchup=item["catchup"],
+            play_url=item["play_url"],
+        )
+
+    # Write non-favourite entries afterwards with sequential numbering starting after num_favs
+    for idx, item in enumerate(non_fav_entries, start=num_favs + 1):
+        m3ustr += M3U_CHANNEL.format(
+            tvg_id=item["tvg_id"],
+            channel_name=item["channel_name"],
+            group_title=item["group_title"],
+            tvg_chno=idx if num_favs > 0 else item["default_order"],
+            tvg_logo=item["tvg_logo"],
+            catchup=item["catchup"],
+            play_url=item["play_url"],
+        )
 
     with open(M3U_SRC, "w+", encoding="utf-8") as f:
         f.write(m3ustr.replace("\xa0", " "))

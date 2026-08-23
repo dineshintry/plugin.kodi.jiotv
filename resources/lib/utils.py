@@ -1441,20 +1441,18 @@ def portFavouritesToPVR():
     import pickle
     import xml.etree.ElementTree as ET
     fav_file = xbmcvfs.translatePath("special://userdata/favourites.xml")
-    chan_ids = set()
+    chan_ids = []
+    seen = set()
     
     def process_target(target_str):
         if not target_str or "plugin.kodi.jiotv" not in target_str.lower():
             return
-            
+        cid = None
         # Check direct channel_id parameter
         m = re.search(r'channel_id=([0-9a-zA-Z_-]+)', target_str)
         if m:
-            chan_ids.add(str(m.group(1)))
-            return
-            
-        # Check _pickle_ parameter (Codequick encoded dictionary)
-        if "_pickle_=" in target_str:
+            cid = str(m.group(1))
+        elif "_pickle_=" in target_str:
             try:
                 pickle_hex = target_str.split("_pickle_=")[1]
                 for delimiter in ['"', "'", "&", ")", " ", "\\"]:
@@ -1463,9 +1461,13 @@ def portFavouritesToPVR():
                 data_bytes = bytes.fromhex(pickle_hex)
                 unpickled = pickle.loads(data_bytes)
                 if isinstance(unpickled, dict) and "channel_id" in unpickled:
-                    chan_ids.add(str(unpickled["channel_id"]))
+                    cid = str(unpickled["channel_id"])
             except Exception as e:
                 Script.log(f"[FAV-PORT] Failed to decode _pickle_: {e}", lvl=Script.WARNING)
+
+        if cid and cid not in seen:
+            seen.add(cid)
+            chan_ids.append(cid)
 
     # Method 1: JSON-RPC query
     try:
@@ -1492,9 +1494,9 @@ def portFavouritesToPVR():
         except Exception as xml_err:
             Script.log(f"[FAV-PORT] XML parse failed: {xml_err}", lvl=Script.WARNING)
             
-    # Override existing favourites in localdb
+    # Override existing favourites in localdb preserving exact user order
     with PersistentDict("localdb") as db:
-        db["pvr_favourites"] = list(chan_ids)
+        db["pvr_favourites"] = chan_ids
         
     # Regenerate M3U playlist
     try:
@@ -1505,7 +1507,7 @@ def portFavouritesToPVR():
         
     import xbmcgui
     if len(chan_ids) > 0:
-        msg = f"Successfully ported {len(chan_ids)} JioTV favourite channels to the TV Guide Favourites group.\n\nPlease restart Kodi (or reload IPTV Simple Client) once for the Favourites group to reflect in the TV Guide."
+        msg = f"Successfully ported {len(chan_ids)} JioTV favourite channels to the TV Guide Favourites group in your exact order.\n\nPlease restart Kodi (or reload IPTV Simple Client) once for the Favourites group to reflect in the TV Guide."
         xbmcgui.Dialog().ok("JioTV Favourites Ported", msg)
         Script.notify("JioTV PVR", f"Ported {len(chan_ids)} favourites to TV Guide.")
     else:
