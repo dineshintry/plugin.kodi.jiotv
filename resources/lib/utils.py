@@ -1436,4 +1436,81 @@ def show_file_in_textviewer(relative_path):
         Script.notify("Error", "Document not found")
 
 
+def portFavouritesToPVR():
+    import re
+    import pickle
+    import xml.etree.ElementTree as ET
+    fav_file = xbmcvfs.translatePath("special://userdata/favourites.xml")
+    chan_ids = set()
+    
+    def process_target(target_str):
+        if not target_str or "plugin.kodi.jiotv" not in target_str.lower():
+            return
+            
+        # Check direct channel_id parameter
+        m = re.search(r'channel_id=([0-9a-zA-Z_-]+)', target_str)
+        if m:
+            chan_ids.add(str(m.group(1)))
+            return
+            
+        # Check _pickle_ parameter (Codequick encoded dictionary)
+        if "_pickle_=" in target_str:
+            try:
+                pickle_hex = target_str.split("_pickle_=")[1]
+                for delimiter in ['"', "'", "&", ")", " ", "\\"]:
+                    if delimiter in pickle_hex:
+                        pickle_hex = pickle_hex.split(delimiter)[0]
+                data_bytes = bytes.fromhex(pickle_hex)
+                unpickled = pickle.loads(data_bytes)
+                if isinstance(unpickled, dict) and "channel_id" in unpickled:
+                    chan_ids.add(str(unpickled["channel_id"]))
+            except Exception as e:
+                Script.log(f"[FAV-PORT] Failed to decode _pickle_: {e}", lvl=Script.WARNING)
+
+    # Method 1: JSON-RPC query
+    try:
+        json_cmd = '{"jsonrpc": "2.0", "method": "Favourites.GetFavourites", "params": {"properties": ["path"]}, "id": 1}'
+        res_str = xbmc.executeJSONRPC(json_cmd)
+        if res_str:
+            import json
+            res = json.loads(res_str)
+            favs = res.get("result", {}).get("favourites", [])
+            for f in favs:
+                path = f.get("path", "")
+                process_target(path)
+    except Exception as json_err:
+        Script.log(f"[FAV-PORT] JSON-RPC query failed: {json_err}", lvl=Script.WARNING)
+        
+    # Method 2: Parse favourites.xml directly
+    if os.path.exists(fav_file):
+        try:
+            tree = ET.parse(fav_file)
+            root = tree.getroot()
+            for fav in root.findall(".//favourite"):
+                fav_str = (fav.text or "") + " " + (fav.attrib.get("thumb", ""))
+                process_target(fav_str)
+        except Exception as xml_err:
+            Script.log(f"[FAV-PORT] XML parse failed: {xml_err}", lvl=Script.WARNING)
+            
+    # Override existing favourites in localdb
+    with PersistentDict("localdb") as db:
+        db["pvr_favourites"] = list(chan_ids)
+        
+    # Regenerate M3U playlist
+    try:
+        from resources.lib.pvr import m3ugen
+        m3ugen(None, notify="no")
+    except Exception as m3u_err:
+        Script.log(f"[FAV-PORT] Error updating M3U: {m3u_err}", lvl=Script.ERROR)
+        
+    import xbmcgui
+    if len(chan_ids) > 0:
+        msg = f"Successfully ported {len(chan_ids)} JioTV favourite channels to the TV Guide Favourites group.\n\nPlease restart Kodi (or reload IPTV Simple Client) once for the Favourites group to reflect in the TV Guide."
+        xbmcgui.Dialog().ok("JioTV Favourites Ported", msg)
+        Script.notify("JioTV PVR", f"Ported {len(chan_ids)} favourites to TV Guide.")
+    else:
+        xbmcgui.Dialog().ok("JioTV Favourites Ported", "No JioTV favourites found in Kodi favourites.xml.")
+        Script.notify("JioTV PVR", "No JioTV favourites found to port.")
+
+
 

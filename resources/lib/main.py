@@ -108,6 +108,11 @@ def importfavourites(*args, **kwargs):
     importFavourites()
 
 @Script.register
+def portfavouritestopvr(*args, **kwargs):
+    from resources.lib.utils import portFavouritesToPVR
+    portFavouritesToPVR()
+
+@Script.register
 def importextrachannels(*args, **kwargs):
     from resources.lib.utils import importExtraChannels
     importExtraChannels()

@@ -48,6 +48,7 @@ def find_available_port(start_port=48996, max_attempts=10):
 # ─── JioTV Proxy (always running) ───────────────────────────────────────────
 
 _PORT = find_available_port()
+proxy.PROXY_PORT = _PORT
 Script.log(f"Starting JioTV proxy on port: {_PORT}", lvl=Script.INFO)
 
 try:

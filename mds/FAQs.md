@@ -36,3 +36,11 @@
 
 **Q: Why doesn't "Best" Video Quality load properly, causing constant buffering even on a high-speed (e.g. 200 Mbps) connection?**  
 **A:** Setting stream quality to "Best" forces Kodi's player to statically lock on the highest available bitrate. Jio's CDNs heavily throttle and limit connections that lock on static high bitrates, causing constant buffering even on ultra-fast 200 Mbps internet connections. Since version `v1.1.5`, Stream Quality is forced to "**Manual**" by default during setup. Video feeds naturally scale organically via adaptive streaming mechanisms depending on your live internet connection. Please leave quality on **Manual** so adaptive streaming can manage and scale bitrates dynamically for you without buffering!
+
+**Q: How do I port my Kodi Favourites to a "Favourites" group in the TV Guide?**  
+**A:** Go to **Add-on Settings** > **Favourites Management** > **Port Favourites to TV Guide**. A popup will confirm how many JioTV favourites were imported. **Note:** You must restart Kodi (or reload IPTV Simple Client in PVR Settings) once afterwards for the Favourites group to show up in your TV Guide grid.
+
+**Q: Why is the highest quality audio track not playing automatically, or why is an older low-quality audio track selected by default on some channels?**  
+**A:** Starting in version `v1.4.0_beta`, JioTV Direct automatically optimizes DASH manifests to select and prioritize the highest bitrate audio track available (e.g. high-bitrate AAC-LC) when a channel starts.  
+*However*, if you previously played a channel and manually selected an audio track using Kodi's video player settings, Kodi saves your per-channel audio selection in its local database (`Kodi userdata/Database`). Kodi will override the add-on's default track with your previously saved choice for that specific channel.  
+**Solution**: If you notice a channel playing a lower quality audio track, open the Kodi Video Player audio context menu while watching the channel, select the highest quality audio stream (which is tagged with its bitrate in the list), and Kodi will remember your preferred high-quality selection going forward!

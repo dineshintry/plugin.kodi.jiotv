@@ -317,5 +317,10 @@ msgctxt "#33075"
 msgid "Automatically triggers OTP input prompt when the JioTV session expires."
 msgstr ""
 
+msgctxt "#33076"
+msgid "Port Favourites to TV Guide"
+msgstr ""
 
-
+msgctxt "#33077"
+msgid "Ports Kodi favourites added for JioTV channels into a 'Favourites' channel group in TV Guide."
+msgstr ""

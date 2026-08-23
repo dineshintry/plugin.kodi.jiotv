@@ -125,6 +125,16 @@
 				</setting>
 			</group>
 			<group id="3" label="Favourites Management">
+				<setting help="33077" id="portfavouritestopvr" label="33076" type="action">
+					<level>0</level>
+					<data>RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/portfavouritestopvr/)</data>
+					<constraints>
+						<allowempty>true</allowempty>
+					</constraints>
+					<control format="action" type="button">
+						<close>true</close>
+					</control>
+				</setting>
 				<setting help="" id="backupfavourites" label="33054" type="action">
 					<level>0</level>
 					<data>RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/backupfavourites/)</data>

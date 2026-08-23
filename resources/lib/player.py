@@ -10,7 +10,8 @@ import urlquick
 import requests
 import inputstreamhelper
 from uuid import uuid4
-from urllib.parse import urlencode
+from urllib.parse import urlencode, quote
+from resources.lib import proxy
 from codequick import Resolver, Script
 from codequick.script import Settings
 from resources.lib.constants import IMG_CATCHUP
@@ -24,6 +25,121 @@ from resources.lib.utils import (
     getCachedChannels,
     get_session,
 )
+
+def probe_and_log_audio_streams(channel_id, channel_name, uri, manifest_type, manifest_text, headers=None):
+    try:
+        Script.log(f"==================== [AUDIO-PROBE START] Channel ID: {channel_id} | Name: {channel_name} | Type: {manifest_type} ====================", lvl=Script.INFO)
+        Script.log(f"[AUDIO-PROBE] Manifest URL: {uri}", lvl=Script.INFO)
+
+        if manifest_type.lower() == "hls":
+            try:
+                import m3u8
+                parsed = m3u8.loads(manifest_text)
+                
+                Script.log("[AUDIO-PROBE][HLS] --- Raw Master Playlist ---", lvl=Script.INFO)
+                for line in manifest_text.splitlines():
+                    if line.strip():
+                        Script.log(f"[AUDIO-PROBE][HLS][RAW] {line}", lvl=Script.INFO)
+
+                audio_media = [m for m in parsed.media if m.type == "AUDIO"]
+                Script.log(f"[AUDIO-PROBE][HLS] --- Audio Media Tracks Count: {len(audio_media)} ---", lvl=Script.INFO)
+                if audio_media:
+                    for i, m in enumerate(audio_media):
+                        Script.log(
+                            f"[AUDIO-PROBE][HLS][AUDIO-TRACK {i+1}] GroupID: {getattr(m, 'group_id', None)} | Name: {getattr(m, 'name', None)} | Language: {getattr(m, 'language', None)} | Default: {getattr(m, 'default', None)} | AutoSelect: {getattr(m, 'autoselect', None)} | Channels: {getattr(m, 'channels', None)} | URI: {getattr(m, 'uri', None)}",
+                            lvl=Script.INFO
+                        )
+                        if getattr(m, 'uri', None):
+                            audio_sub_uri = m.uri
+                            if not audio_sub_uri.startswith("http"):
+                                base_dir = uri.rsplit('/', 1)[0]
+                                audio_sub_uri = f"{base_dir}/{audio_sub_uri}"
+                            try:
+                                sub_resp = get_session().get(audio_sub_uri, headers=headers, timeout=(3, 5))
+                                if sub_resp.status_code == 200:
+                                    Script.log(f"[AUDIO-PROBE][HLS][AUDIO-TRACK {i+1}-SUBPLAYLIST] Raw Content:", lvl=Script.INFO)
+                                    for sub_line in sub_resp.text.splitlines():
+                                        if sub_line.strip():
+                                            Script.log(f"[AUDIO-PROBE][HLS][AUDIO-TRACK {i+1}-SUB] {sub_line}", lvl=Script.INFO)
+                            except Exception as sub_err:
+                                Script.log(f"[AUDIO-PROBE][HLS][AUDIO-TRACK {i+1}-SUBPLAYLIST] Fetch failed: {sub_err}", lvl=Script.INFO)
+                else:
+                    Script.log("[AUDIO-PROBE][HLS] No explicit #EXT-X-MEDIA:TYPE=AUDIO tracks found in master playlist.", lvl=Script.INFO)
+
+                Script.log(f"[AUDIO-PROBE][HLS] --- Variant Playlists Count: {len(parsed.playlists)} ---", lvl=Script.INFO)
+                for i, pl in enumerate(parsed.playlists):
+                    stream_info = pl.stream_info
+                    bw = getattr(stream_info, 'bandwidth', None)
+                    res = getattr(stream_info, 'resolution', None)
+                    codecs = getattr(stream_info, 'codecs', None)
+                    audio_grp = getattr(stream_info, 'audio', None)
+                    Script.log(
+                        f"[AUDIO-PROBE][HLS][VARIANT {i+1}] Bandwidth: {bw} | Resolution: {res} | Codecs: {codecs} | AudioGroup: {audio_grp} | URI: {pl.uri}",
+                        lvl=Script.INFO
+                    )
+            except Exception as e:
+                Script.log(f"[AUDIO-PROBE][HLS] Error parsing HLS M3U8: {e}", lvl=Script.ERROR)
+
+        elif manifest_type.lower() == "mpd":
+            try:
+                import xml.etree.ElementTree as ET
+                Script.log("[AUDIO-PROBE][MPD] --- Raw MPD XML ---", lvl=Script.INFO)
+                for line in manifest_text.splitlines():
+                    if line.strip():
+                        Script.log(f"[AUDIO-PROBE][MPD][RAW] {line}", lvl=Script.INFO)
+
+                root_elem = ET.fromstring(manifest_text)
+                adapt_sets = root_elem.findall(".//{*}AdaptationSet")
+                Script.log(f"[AUDIO-PROBE][MPD] --- Total AdaptationSets found: {len(adapt_sets)} ---", lvl=Script.INFO)
+
+                audio_set_count = 0
+                for idx, aset in enumerate(adapt_sets):
+                    content_type = aset.attrib.get("contentType", "")
+                    mime_type = aset.attrib.get("mimeType", "")
+                    lang = aset.attrib.get("lang", "")
+                    group = aset.attrib.get("group", "")
+
+                    reps = aset.findall(".//{*}Representation")
+                    is_audio = ("audio" in content_type.lower()) or ("audio" in mime_type.lower())
+                    if not is_audio:
+                        for r in reps:
+                            r_mime = r.attrib.get("mimeType", "").lower()
+                            r_codecs = r.attrib.get("codecs", "").lower()
+                            if "audio" in r_mime or r_codecs.startswith(("mp4a", "ac-3", "ec-3", "opus")):
+                                is_audio = True
+                                break
+
+                    if is_audio:
+                        audio_set_count += 1
+                        Script.log(
+                            f"[AUDIO-PROBE][MPD][AUDIO-ADAPTATION-SET {audio_set_count}] XML-Idx: {idx} | Group: {group} | Lang: {lang} | MimeType: {mime_type} | ContentType: {content_type}",
+                            lvl=Script.INFO
+                        )
+                        for r_idx, r in enumerate(reps):
+                            rep_id = r.attrib.get("id", "N/A")
+                            bw = r.attrib.get("bandwidth", "N/A")
+                            codecs = r.attrib.get("codecs", "N/A")
+                            rate = r.attrib.get("audioSamplingRate", "N/A")
+                            mime = r.attrib.get("mimeType", mime_type)
+
+                            acc = r.find(".//{*}AudioChannelConfiguration")
+                            channels_val = acc.attrib.get("value", "N/A") if acc is not None else "N/A"
+
+                            Script.log(
+                                f"   -> [AUDIO-PROBE][MPD][AUDIO-REP {r_idx+1}] ID: {rep_id} | Bandwidth: {bw} bps ({int(bw)//1000 if str(bw).isdigit() else 'N/A'} kbps) | Codecs: {codecs} | Mime: {mime} | SampleRate: {rate} Hz | Channels: {channels_val}",
+                                lvl=Script.INFO
+                            )
+
+                if audio_set_count == 0:
+                    Script.log("[AUDIO-PROBE][MPD] No dedicated Audio AdaptationSets detected in MPD XML.", lvl=Script.INFO)
+
+            except Exception as e:
+                Script.log(f"[AUDIO-PROBE][MPD] Error parsing MPD XML: {e}", lvl=Script.ERROR)
+
+        Script.log(f"==================== [AUDIO-PROBE END] Channel ID: {channel_id} ====================", lvl=Script.INFO)
+    except Exception as general_err:
+        Script.log(f"[AUDIO-PROBE] General logging error: {general_err}", lvl=Script.ERROR)
+
 
 @Resolver.register
 @isLoggedIn
@@ -76,7 +192,16 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
         if custom_headers:
             props["inputstream.adaptive.stream_headers"] = urlencode(custom_headers)
             props["inputstream.adaptive.manifest_headers"] = urlencode(custom_headers)
+
+        if uriToUse and uriToUse.startswith("http"):
+            try:
+                ex_resp = get_session().get(uriToUse, headers=custom_headers, timeout=(5, 10))
+                if ex_resp.status_code == 200:
+                    probe_and_log_audio_streams(channel_id, chan_data.get("channel_name", "Extra Channel"), uriToUse, "mpd" if isMpd else "hls", ex_resp.text, headers=custom_headers)
+            except Exception as ex_err:
+                Script.log(f"[AUDIO-PROBE] Extra channel manifest fetch failed: {ex_err}", lvl=Script.WARNING)
             
+        Script.log(f"[AUDIO-PROBE][PROPS] Extra Channel {channel_id} Properties: {props}", lvl=Script.INFO)
         from codequick import Listitem as CQListitem
         return CQListitem().from_dict(
             **{
@@ -338,12 +463,14 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
                     stream=True,
                     allow_redirects=True
                 )
+                mpd_text = mpd_resp.text
                 c_dict = {}
                 c_dict.update(get_session().cookies.get_dict())
                 c_dict.update(mpd_resp.cookies.get_dict())
                 cookie_str = "; ".join([f"{k}={v}" for k, v in c_dict.items()])
                 mpd_resp.close()
                 Script.log(f"[MPD] Cookies fetched: {cookie_str}", lvl=Script.INFO)
+                probe_and_log_audio_streams(channel_id, plugin._title or f"Channel {channel_id}", uriToUse, "mpd", mpd_text)
             except Exception as e:
                 Script.log(f"Cookie fetch failed: {e}", lvl=Script.ERROR)
 
@@ -427,6 +554,7 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
 
             m3u8Headers = {k: str(v) for k, v in m3u8Headers.items() if v}
             m3u8String = m3u8Res.text
+            probe_and_log_audio_streams(channel_id, plugin._title or f"Channel {channel_id}", uriToUse, "hls", m3u8String, headers=m3u8Headers)
             variant_m3u8 = m3u8.loads(m3u8String)
             if variant_m3u8.is_variant and (variant_m3u8.version is None or variant_m3u8.version < 7):
                 quality = quality_to_enum(qltyopt, len(variant_m3u8.playlists))
@@ -457,6 +585,7 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
                 props["inputstream.adaptive.stream_headers"] = urlencode(m3u8Headers)
                 props["inputstream.adaptive.manifest_headers"] = urlencode(m3u8Headers)
 
+            Script.log(f"[AUDIO-PROBE][PROPS] Channel {channel_id} (HLS) Properties: {props}", lvl=Script.INFO)
             from codequick import Listitem as CQListitem
             return CQListitem().from_dict(
                 **{
@@ -473,7 +602,6 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
             "IsPlayable": True,
             "inputstream": "inputstream.adaptive",
             "inputstream.adaptive.stream_selection_type": selectionType,
-            "inputstream.adaptive.chooser_resolution_secure_max": "max",
             "inputstream.adaptive.max_resolution": "1080",
             "inputstream.adaptive.manifest_type": "mpd" if isMpd else "hls",
         }
@@ -506,13 +634,22 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
         props["inputstream.adaptive.stream_headers"] = sh
         props["inputstream.adaptive.manifest_headers"] = mh
 
+        callback_uri = uriToUse
+        if isMpd:
+            proxy_port = getattr(proxy, 'PROXY_PORT', 48996)
+            proxy_mpd_url = f"http://127.0.0.1:{proxy_port}/manifest.mpd?url={quote(uriToUse)}"
+            if cookie_str:
+                proxy_mpd_url += f"&cookie={quote(cookie_str)}"
+            callback_uri = proxy_mpd_url
+            Script.log(f"[PLAY] Using proxy manifest URL for DASH: {callback_uri}", lvl=Script.INFO)
+
         from codequick import Listitem as CQListitem
             
         return CQListitem().from_dict(
             **{
                 "label": plugin._title,
                 "art": art,
-                "callback": uriToUse,
+                "callback": callback_uri,
                 "properties": props
             }
         )

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.kodi.jiotv" name="JioTV Direct" version="1.3.7_beta" provider-name="Community">
+<addon id="plugin.kodi.jiotv" name="JioTV Direct" version="1.4.0_beta" provider-name="Community">
     <requires>
         <import addon="xbmc.python" version="3.0.0" />
         <import addon="script.module.codequick" version="1.0.2" />
@@ -29,6 +29,11 @@
         <platform>all</platform>
         <license>MIT</license>
         <news>
+v1.4.0_beta
+- Added: Port Kodi Favourites to TV Guide Favourites group in IPTV Simple Client.
+- Added: Confirmation popup dialog instructing users to restart Kodi/PVR for TV Guide favourites to reflect.
+- Fixed: Audio stream optimization automatically selecting and tagging highest bitrate audio track by default.
+
 v1.3.7_beta
 - Added: OTP auto-trigger setting (disabled by default) to control whether login prompt triggers automatically upon session expiry.
 - Added: User-friendly error message when playing unsubscribed channels requiring an active JioTV subscription.

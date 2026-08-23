@@ -9,7 +9,19 @@ This document provides in-depth technical details and instructions for the major
 The addon features a highly resilient backup system to manage your account and curated channels:
 * **Resilient Account Backup**: Your login session is automatically backed up to a safe path that persists even if you uninstall or reinstall the addon.
 * **Manage Favourites**: You can securely backup your chosen favourite channels, restore them across different devices, or share your curated list with others.
-* **Restore Shared Favourites**: Quickly import a friend's shared favourites list directly into your Kodi setup.
+### Restore Shared Favourites
+Quickly import a friend's shared favourites list directly into your Kodi setup.
+
+### ⭐️ Port Favourites to TV Guide (v1.4.0_beta+)
+You can port Kodi native favourites directly into the PVR TV Guide (IPTV Simple Client):
+* **What it does**: Scans your Kodi `favourites.xml` and extracts all favourite channels belonging to **JioTV Direct** (`plugin.kodi.jiotv`), filtering out non-JioTV media/addons.
+* **TV Guide Integration**: Automatically creates a dedicated **"Favourites"** channel group at the top of your TV Guide playlist (`jiotv.m3u`).
+* **How to use**:
+  1. Open **JioTV Direct** Add-on Settings.
+  2. Go to **Favourites Management** (Category 3).
+  3. Click **"Port Favourites to TV Guide"**.
+  4. A popup confirmation will display the exact number of channels ported.
+* **⚠️ Important Notice**: After clicking "Port Favourites to TV Guide", **you must restart Kodi** (or reload IPTV Simple Client in Kodi PVR Settings) once for the new **"Favourites"** group to reflect in your TV Guide grid.
 
 ### Coexistence with other JioTV Addons
 Installing **JioTV Direct** (`plugin.kodi.jiotv`) does **not** replace or overwrite any existing JioTV addons (like `plugin.video.jiotv`). Both can be installed on the same system simultaneously.

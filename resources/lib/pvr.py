@@ -43,6 +43,14 @@ def m3ugen(plugin, notify="yes"):
     GENRE_MAP = dictionary.get("channelCategoryMapping") or {}
     LANG_MAP = dictionary.get("languageIdMapping") or {}
 
+    pvr_favs = set()
+    try:
+        from codequick.storage import PersistentDict
+        with PersistentDict("localdb") as db:
+            pvr_favs = set(str(x) for x in db.get("pvr_favourites", []))
+    except Exception:
+        pass
+
     m3ustr = '#EXTM3U x-tvg-url="%s"\n' % EPG_SRC
 
     for i, channel in enumerate(channels):
@@ -69,6 +77,9 @@ def m3ugen(plugin, notify="yes"):
             pass
 
         group = lang + ";" + genre
+        if str(channel_id) in pvr_favs:
+            group = "Favourites;" + group
+
         _play_url = PLAY_URL + "channel_id={0}".format(channel_id)
 
         catchup = ""
@@ -100,9 +111,10 @@ def m3ugen(plugin, notify="yes"):
         cid = zee["@id"]
         name = zee["display-name"]
         logo = zee["icon"]["@src"]
+        zee_group = "Favourites;ZEE" if str(cid) in pvr_favs else "ZEE"
 
         m3ustr += (
-            f'#EXTINF:-1 tvg-id="{cid}" tvg-name="{name}" group-title="ZEE" tvg-logo="{logo}",{name}\n'
+            f'#EXTINF:-1 tvg-id="{cid}" tvg-name="{name}" group-title="{zee_group}" tvg-logo="{logo}",{name}\n'
             f'plugin://plugin.kodi.jiotv/resources/lib/player/play/?channel_id={cid}\n'
         )
 
@@ -121,9 +133,10 @@ def m3ugen(plugin, notify="yes"):
             ename = extra.get("channel_name", "Extra Channel")
             elogo = extra.get("logoUrl", "")
             egroup = extra.get("group", "General")
+            extra_group = f"Favourites;Extra Channels;{egroup}" if str(ecid) in pvr_favs else f"Extra Channels;{egroup}"
             
             m3ustr += (
-                f'#EXTINF:-1 tvg-id="{ecid}" tvg-name="{ename}" group-title="Extra Channels;{egroup}" tvg-logo="{elogo}",{ename}\n'
+                f'#EXTINF:-1 tvg-id="{ecid}" tvg-name="{ename}" group-title="{extra_group}" tvg-logo="{elogo}",{ename}\n'
                 f'plugin://plugin.kodi.jiotv/resources/lib/player/play/?channel_id={ecid}&is_extra=true\n'
             )
 
