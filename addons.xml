@@ -33,9 +33,7 @@
 v1.3.7
 - Fixed: Session expiration issues (419 errors) by parsing actual JWT authToken expiration time (12 hours) and executing on-demand token refreshes during playback.
 - Added: OTP auto-trigger setting (disabled by default) to control whether login prompt triggers automatically upon session expiry.
-- Added: Port Kodi Favourites to TV Guide Favourites group in IPTV Simple Client.
 - Added: User-friendly error message when playing unsubscribed channels requiring an active JioTV subscription.
-- Fixed: Audio stream optimization automatically selecting and tagging highest bitrate audio track by default.
 - Fixed: Resolved AmLogic hardware secure decoder warnings and system popups by changing maximum resolution property value to 'max'.
 
 v1.3.6
