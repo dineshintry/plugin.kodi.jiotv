@@ -30,6 +30,8 @@
         <license>MIT</license>
         <news>
 v1.4.0_beta
+- Fixed: Resolved duplicate IPTV Simple client instances and non-sequential channel numbering in Kodi PVR.
+- Fixed: Synchronized Kodi UI channel numbers (iChannelNumber) with remote control key inputs (tvg-chno).
 - Added: Port Kodi Favourites to TV Guide Favourites group in IPTV Simple Client.
 - Added: Confirmation popup dialog instructing users to restart Kodi/PVR for TV Guide favourites to reflect.
 - Fixed: Audio stream optimization automatically selecting and tagging highest bitrate audio track by default.

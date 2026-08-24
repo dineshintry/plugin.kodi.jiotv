@@ -1105,6 +1105,42 @@ def busy():
         xbmc.executebuiltin("Dialog.Close(busydialognocancel)")
 
 
+def _clean_stale_pvr_db():
+    try:
+        import sqlite3
+        db_dir = xbmcvfs.translatePath("special://userdata/Database/")
+        if not os.path.exists(db_dir):
+            return
+        for f in os.listdir(db_dir):
+            if f.startswith("TV") and f.endswith(".db"):
+                db_path = os.path.join(db_dir, f)
+                try:
+                    conn = sqlite3.connect(db_path)
+                    cur = conn.cursor()
+                    cur.execute("SELECT idClient, iInstanceID FROM clients WHERE sAddonID='pvr.iptvsimple';")
+                    rows = cur.fetchall()
+                    if len(rows) > 1:
+                        inst1_client = [r[0] for r in rows if r[1] == 1]
+                        keep_client_id = inst1_client[0] if inst1_client else sorted(rows, key=lambda x: x[1])[0][0]
+                        stale_clients = [r[0] for r in rows if r[0] != keep_client_id]
+                        if stale_clients:
+                            placeholders = ",".join(["?"] * len(stale_clients))
+                            cur.execute(f"DELETE FROM map_channelgroups_channels WHERE idChannel IN (SELECT idChannel FROM channels WHERE iClientId IN ({placeholders}));", stale_clients)
+                            cur.execute(f"DELETE FROM channels WHERE iClientId IN ({placeholders});", stale_clients)
+                            cur.execute(f"DELETE FROM clients WHERE idClient IN ({placeholders});", stale_clients)
+                            Script.log(f"[PVR SETUP] Cleared stale PVR clients {stale_clients} from {f}", lvl=Script.INFO)
+                    
+                    # Sync Kodi internal channel numbers (iChannelNumber) with M3U channel numbers (iClientChannelNumber)
+                    cur.execute("UPDATE map_channelgroups_channels SET iChannelNumber = iClientChannelNumber WHERE iClientChannelNumber IS NOT NULL AND iClientChannelNumber > 0;")
+                    cur.execute("UPDATE map_channelgroups_channels SET iOrder = iClientChannelNumber WHERE iClientChannelNumber IS NOT NULL AND iClientChannelNumber > 0;")
+                    conn.commit()
+                    conn.close()
+                except Exception as e:
+                    Script.log(f"[PVR SETUP] Database cleanup error on {f}: {e}", lvl=Script.WARNING)
+    except Exception as e:
+        Script.log(f"[PVR SETUP] General DB cleanup error: {e}", lvl=Script.WARNING)
+
+
 def _setup(m3uPath, epgUrl):
     pDialog = DialogProgress()
     pDialog.create("PVR Setup in progress")
@@ -1112,55 +1148,116 @@ def _setup(m3uPath, epgUrl):
     addon = Addon(ADDON_ID)
     ADDON_NAME = addon.getAddonInfo("name")
     addon_path = xbmcvfs.translatePath(addon.getAddonInfo("profile"))
-    instance_filepath = os.path.join(addon_path, "instance-settings-91.xml")
 
     kodi_rpc("Addons.SetAddonEnabled", {"addonid": ADDON_ID, "enabled": False})
     pDialog.update(10)
 
+    # Clean any duplicate stale clients from TV database
+    _clean_stale_pvr_db()
+
     # newer PVR Simple uses instance settings that can't yet be set via python api
     # so do a workaround where we leverage the migration when no instance settings found
     if LooseVersion(addon.getAddonInfo("version")) >= LooseVersion("20.8.0"):
-        xbmcvfs.delete(instance_filepath)
+        jiotv_instances = []
+        other_instances = []
 
-        for file in os.listdir(addon_path):
-            if file.startswith("instance-settings-") and file.endswith(".xml"):
-                file_path = os.path.join(addon_path, file)
-                with open(file_path) as f:
-                    data = f.read()
-                # ensure no duplication in other instances
-                if (
-                    'id="m3uPath">{}</setting>'.format(m3uPath) in data
-                    or 'id="epgUrl">{}</setting>'.format(epgUrl) in data
-                ):
-                    xbmcvfs.delete(os.path.join(addon_path, file_path))
-                else:
-                    safe_copy(file_path, file_path + ".bu", del_src=True)
-        pDialog.update(25)
-        kodi_rpc("Addons.SetAddonEnabled", {"addonid": ADDON_ID, "enabled": True})
-        # wait for migration to occur
-        while not os.path.exists(os.path.join(addon_path, "instance-settings-1.xml")):
+        if os.path.exists(addon_path):
+            for file in os.listdir(addon_path):
+                if file.startswith("instance-settings-") and file.endswith(".xml"):
+                    file_path = os.path.join(addon_path, file)
+                    try:
+                        with open(file_path, "r", encoding="utf-8") as f:
+                            data = f.read()
+                        if (
+                            'id="m3uPath">{}</setting>'.format(m3uPath) in data
+                            or 'id="epgUrl">{}</setting>'.format(epgUrl) in data
+                            or "plugin.kodi.jiotv" in data
+                        ):
+                            jiotv_instances.append(file_path)
+                        else:
+                            other_instances.append(file_path)
+                    except Exception as e:
+                        Script.log(f"[PVR SETUP] Failed reading {file_path}: {e}", lvl=Script.WARNING)
+
+        # Ensure only ONE JioTV instance exists by removing any duplicates
+        target_instance = None
+        if jiotv_instances:
+            inst1_path = os.path.join(addon_path, "instance-settings-1.xml")
+            if inst1_path in jiotv_instances:
+                target_instance = inst1_path
+            else:
+                target_instance = jiotv_instances[0]
+
+            for inst_file in jiotv_instances:
+                if inst_file != target_instance:
+                    Script.log(f"[PVR SETUP] Deleting duplicate JioTV instance: {inst_file}", lvl=Script.INFO)
+                    try:
+                        os.remove(inst_file)
+                    except Exception:
+                        xbmcvfs.delete(inst_file)
+
+        if not target_instance:
+            inst1_path = os.path.join(addon_path, "instance-settings-1.xml")
+            if not os.path.exists(inst1_path) or inst1_path not in other_instances:
+                target_instance = inst1_path
+            else:
+                target_instance = os.path.join(addon_path, "instance-settings-91.xml")
+
+        if not os.path.exists(target_instance):
+            for other_file in other_instances:
+                bu_file = other_file + ".bu"
+                safe_copy(other_file, bu_file, del_src=True)
+
+            pDialog.update(25)
+            kodi_rpc("Addons.SetAddonEnabled", {"addonid": ADDON_ID, "enabled": True})
+            while not os.path.exists(os.path.join(addon_path, "instance-settings-1.xml")):
+                monitor.waitForAbort(1)
+            kodi_rpc("Addons.SetAddonEnabled", {"addonid": ADDON_ID, "enabled": False})
             monitor.waitForAbort(1)
-        kodi_rpc("Addons.SetAddonEnabled", {"addonid": ADDON_ID, "enabled": False})
-        monitor.waitForAbort(1)
 
-        safe_copy(
-            os.path.join(addon_path, "instance-settings-1.xml"),
-            instance_filepath,
-            del_src=True,
-        )
-        pDialog.update(35)
-        with open(instance_filepath, "r") as f:
-            data = f.read()
-        with open(instance_filepath, "w") as f:
-            f.write(data.replace("Migrated Add-on Config", ADDON_NAME))
-        pDialog.update(50)
-        for file in os.listdir(addon_path):
-            if file.endswith(".bu"):
-                safe_copy(
-                    os.path.join(addon_path, file),
-                    os.path.join(addon_path, file[:-3]),
-                    del_src=True,
-                )
+            created_inst1 = os.path.join(addon_path, "instance-settings-1.xml")
+            if target_instance != created_inst1:
+                safe_copy(created_inst1, target_instance, del_src=True)
+
+            for file in os.listdir(addon_path):
+                if file.endswith(".bu"):
+                    safe_copy(
+                        os.path.join(addon_path, file),
+                        os.path.join(addon_path, file[:-3]),
+                        del_src=True,
+                    )
+
+        pDialog.update(40)
+        if os.path.exists(target_instance):
+            try:
+                with open(target_instance, "r", encoding="utf-8") as f:
+                    xml_content = f.read()
+
+                if "Migrated Add-on Config" in xml_content:
+                    xml_content = xml_content.replace("Migrated Add-on Config", ADDON_NAME)
+
+                def _update_setting_xml(data, setting_id, value):
+                    pattern = r'<setting id="' + re.escape(setting_id) + r'"[^>]*/?>([^<]*</setting>)?'
+                    replacement = f'<setting id="{setting_id}">{value}</setting>'
+                    if re.search(pattern, data):
+                        return re.sub(pattern, replacement, data)
+                    else:
+                        return data.replace('</settings>', f'    <setting id="{setting_id}">{value}</setting>\n</settings>')
+
+                xml_content = _update_setting_xml(xml_content, "m3uPathType", "0")
+                xml_content = _update_setting_xml(xml_content, "m3uPath", m3uPath)
+                xml_content = _update_setting_xml(xml_content, "epgPathType", "1")
+                xml_content = _update_setting_xml(xml_content, "epgUrl", epgUrl)
+                xml_content = _update_setting_xml(xml_content, "epgCache", "false")
+                xml_content = _update_setting_xml(xml_content, "useInputstreamAdaptiveforHls", "true")
+                xml_content = _update_setting_xml(xml_content, "catchupEnabled", "true")
+
+                with open(target_instance, "w", encoding="utf-8") as f:
+                    f.write(xml_content)
+            except Exception as e:
+                Script.log(f"[PVR SETUP] Error writing instance settings to {target_instance}: {e}", lvl=Script.WARNING)
+
+        pDialog.update(60)
         kodi_rpc("Addons.SetAddonEnabled", {"addonid": ADDON_ID, "enabled": True})
         pDialog.update(70)
     else:
@@ -1173,6 +1270,16 @@ def _setup(m3uPath, epgUrl):
     set_kodi_setting("pvrmanager.preselectplayingchannel", True)
     set_kodi_setting("pvrmanager.backendchannelorder", True)
     set_kodi_setting("pvrmanager.usebackendchannelnumbers", True)
+    
+    # Run DB cleanup again to ensure clean database state after enabling
+    _clean_stale_pvr_db()
+    
+    # Trigger PVR database reset so Kodi rebuilds iChannelNumber fresh from M3U tvg-chno
+    try:
+        kodi_rpc("Settings.SetSettingValue", {"setting": "pvrmanager.resetdb", "value": True})
+    except Exception as reset_err:
+        Script.log(f"[PVR SETUP] pvrmanager.resetdb trigger failed: {reset_err}", lvl=Script.INFO)
+    
     pDialog.update(100)
     pDialog.close()
     Script.notify("IPTV setup", "Epg and playlist updated")
