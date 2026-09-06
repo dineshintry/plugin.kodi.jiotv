@@ -424,7 +424,7 @@ def getHeaders():
 
 
 def getCachedChannels():
-    CACHE_VERSION = "v3.1_hybrid_v2"  # Bump this to force re-fetch
+    CACHE_VERSION = "v3.1_hybrid_v3"  # Bump this to force re-fetch
     with PersistentDict("localdb") as db:
         channelList = db.get("channelList", False)
         cacheVersion = db.get("_channelCacheVersion", "")
@@ -614,9 +614,9 @@ def getChannelVODContent(channel_id, offset_days=0):
         current_time = int(time.time() * 1000)
         
         for show in epg_data.get("epg", []):
-            # Include past shows with catchup availability (VOD-like)
-            # Some channels like Brio TV or Cartoon Network wrongly have stbCatchupAvailable=False
-            if (show.get("startEpoch", 0) < current_time):
+            # Include past shows with mobile catchup availability (VOD-like)
+            # Note: isCatchupAvailable indicates mobile OTT catchup support (stbCatchupAvailable is for JioFiber STB)
+            if (show.get("startEpoch", 0) < current_time) and show.get("isCatchupAvailable"):
                 
                 # Mark as channel VOD content with offset info
                 show["_isChannelVOD"] = True

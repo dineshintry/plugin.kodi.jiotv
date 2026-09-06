@@ -10,6 +10,7 @@ import urlquick
 import requests
 import inputstreamhelper
 from uuid import uuid4
+from datetime import datetime, timezone, timedelta
 from urllib.parse import urlencode, quote
 from resources.lib import proxy
 from codequick import Resolver, Script
@@ -143,9 +144,9 @@ def probe_and_log_audio_streams(channel_id, channel_name, uri, manifest_type, ma
 
 @Resolver.register
 @isLoggedIn
-def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=None, end=None, languageId=None, is_extra=None):
+def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=None, end=None, languageId=None, is_extra=None, utc=None, utcend=None, **kwargs):
     channel_id = str(channel_id)
-    Script.log(f"[VOD-DEBUG] PLAY function called with: channel_id={channel_id}, showtime={showtime}, srno={srno}, programId={programId}, begin={begin}, end={end}, is_extra={is_extra}", lvl=Script.INFO)
+    Script.log(f"[VOD-DEBUG] PLAY function called with: channel_id={channel_id}, showtime={showtime}, srno={srno}, programId={programId}, begin={begin}, end={end}, is_extra={is_extra}, utc={utc}, utcend={utcend}, kwargs={kwargs}", lvl=Script.INFO)
     
     if is_extra == "true" or is_extra is True:
         from resources.lib.utils import getExtraChannels
@@ -222,31 +223,100 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
 
         channel_id_str = str(channel_id)
 
+        now_utc = datetime.now(timezone.utc)
+        ist_tz = timezone(timedelta(hours=5, minutes=30))
+
+        start_dt = None
+        end_dt = None
+
+        # 1. Parse utc/utcend timestamps if provided by IPTV Simple
+        if utc and str(utc).isdigit():
+            try:
+                start_dt = datetime.fromtimestamp(int(utc), tz=timezone.utc)
+                if utcend and str(utcend).isdigit():
+                    end_dt = datetime.fromtimestamp(int(utcend), tz=timezone.utc)
+            except Exception as e:
+                Script.log(f"[VOD] Error parsing utc/utcend timestamps: {e}", lvl=Script.WARNING)
+
+        # 2. Parse begin/end if provided as ISO strings
+        if not start_dt and begin and isinstance(begin, str) and len(begin) >= 15:
+            try:
+                start_dt = datetime.strptime(begin[:15], "%Y%m%dT%H%M%S").replace(tzinfo=timezone.utc)
+            except Exception:
+                pass
+        if not end_dt and end and isinstance(end, str) and len(end) >= 15:
+            try:
+                end_dt = datetime.strptime(end[:15], "%Y%m%dT%H%M%S").replace(tzinfo=timezone.utc)
+            except Exception:
+                pass
+
+        # 3. Derive start/end datetimes from srno + showtime if still missing
+        if (not start_dt or not end_dt) and showtime and srno:
+            try:
+                showtime_clean = str(showtime).replace(":", "")[:6].zfill(6)
+                srno_str = str(srno)
+                if srno_str.startswith("20") and len(srno_str) >= 8 and srno_str[:8].isdigit():
+                    date_part = srno_str[:8]
+                elif len(srno_str) >= 6 and srno_str[:6].isdigit():
+                    date_part = "20" + srno_str[:6]
+                else:
+                    date_part = now_utc.astimezone(ist_tz).strftime("%Y%m%d")
+
+                start_ist = datetime.strptime(f"{date_part}{showtime_clean}", "%Y%m%d%H%M%S").replace(tzinfo=ist_tz)
+                if not start_dt:
+                    start_dt = start_ist.astimezone(timezone.utc)
+                if not end_dt:
+                    # Default duration 30 minutes if end time is unknown
+                    end_dt = start_dt + timedelta(minutes=30)
+            except Exception as e:
+                Script.log(f"[VOD] Error deriving times from srno/showtime: {e}", lvl=Script.WARNING)
+
+        # Ensure begin & end strings are populated if datetimes are available
+        if start_dt and not begin:
+            begin = start_dt.strftime("%Y%m%dT%H%M%S")
+        if end_dt and not end:
+            end = end_dt.strftime("%Y%m%dT%H%M%S")
+
+        # Determine if programme is currently on air (live) or in the future
+        is_currently_live = False
+        if end_dt and end_dt > now_utc:
+            is_currently_live = True
+        elif start_dt and start_dt <= now_utc and (now_utc - start_dt).total_seconds() < 1800:
+            # Started recently within 30 mins
+            is_currently_live = True
+
         stream_type = "Seek"
         rjson = {"channel_id": int(channel_id), "stream_type": stream_type}
         isCatchup = False
 
-        if showtime and srno:
+        if showtime and srno and not is_currently_live:
             isCatchup = True
-            rjson["showtime"] = showtime
-            rjson["srno"] = srno
+            rjson["showtime"] = str(showtime).replace(":", "")[:6]
+            rjson["srno"] = str(srno)
             rjson["stream_type"] = "Catchup"
-            rjson["programId"] = programId
+            # Ensure programId is a valid non-empty string for JioTV API
+            clean_program_id = programId
+            if not clean_program_id or clean_program_id == "{catchup-id}":
+                clean_program_id = f"PROG-{channel_id}-{rjson['srno']}"
+            rjson["programId"] = clean_program_id
             rjson["begin"] = begin
             rjson["end"] = end
-            
+
             headers = getHeaders()
             headers["channelid"] = str(channel_id)
             headers["srno"] = rjson["srno"]
             headers["showtime"] = rjson["showtime"]
-            
+
             Script.log(f"[VOD-DEBUG] VOD REQUEST DETECTED: stream_type=Catchup, params={rjson}", lvl=Script.INFO)
         else:
-            Script.log(f"[VOD-DEBUG] LIVE STREAM REQUEST: stream_type=Seek (no VOD params provided)", lvl=Script.INFO)
+            if is_currently_live:
+                Script.log(f"[VOD-DEBUG] CURRENT PROGRAMME ON AIR (end_dt={end_dt}, now={now_utc}): Switching to live stream (stream_type=Seek)", lvl=Script.INFO)
+            else:
+                Script.log(f"[VOD-DEBUG] LIVE STREAM REQUEST: stream_type=Seek (no VOD params provided)", lvl=Script.INFO)
 
             headers = getHeaders()
             headers["channelid"] = str(channel_id)
-            headers["srno"] = rjson["srno"] if isCatchup else str(uuid4())
+            headers["srno"] = str(uuid4())
 
         zee_channels = {
             "5016": "https://z5ak-cmaflive.zee5.com/cmaf/live/2105525/ZeeAnmolCinemaELE/master.m3u8",
@@ -376,10 +446,37 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
 
             if res.status_code != 200:
                 Script.log(f"VOD API Error: {res.status_code} - {res.text}", lvl=Script.ERROR)
-                if res.status_code in (401, 419):
-                    raise Exception(f"HTTP Error {res.status_code}: Token expired or unauthorized")
-                Script.notify("Playback Error", f"API returned {res.status_code}")
-                return False
+                # If Catchup request failed with 400 Bad Request, automatically fall back to live Seek stream
+                if isCatchup and res.status_code == 400:
+                    Script.log(f"[PLAY] Catchup API returned 400 for channel {chan}. Automatically falling back to live stream (Seek)...", lvl=Script.WARNING)
+                    isCatchup = False
+                    rjson["stream_type"] = "Seek"
+                    api_params = {
+                        "stream_type": "Seek",
+                        "channel_id": chan
+                    }
+                    _api_result[0] = None
+                    _api_error[0] = None
+                    _do_api_call(get_session())
+                    if _api_result[0] is not None and _api_result[0].status_code == 200:
+                        res = _api_result[0]
+                        Script.log("[PLAY] Fallback to live stream succeeded (status=200)", lvl=Script.INFO)
+
+                if res.status_code != 200:
+                    if res.status_code in (401, 419):
+                        raise Exception(f"HTTP Error {res.status_code}: Token expired or unauthorized")
+                    err_msg = ""
+                    try:
+                        err_msg = res.json().get("message", "")
+                    except Exception:
+                        pass
+                    if "Sony Srno data is not mapped" in err_msg:
+                        Script.notify("Catchup Unavailable", "SET catchup is unmapped on JioTV (exclusive to SonyLIV).")
+                    elif err_msg:
+                        Script.notify("Playback Error", err_msg)
+                    else:
+                        Script.notify("Playback Error", f"API returned {res.status_code}")
+                    return False
 
             api_response = res.json()
             result_url = api_response.get("result", "")
@@ -463,6 +560,20 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
                     stream=True,
                     allow_redirects=True
                 )
+                if mpd_resp.status_code == 404:
+                    mpd_resp.close()
+                    Script.log(f"[PLAY] MPD manifest returned 404 Not Found from CDN: {uriToUse}", lvl=Script.ERROR)
+                    if isCatchup:
+                        Script.notify("Catchup Unavailable", "This program is not available in JioTV archive.")
+                    else:
+                        Script.notify("Playback Error", "Stream manifest not found (404).")
+                    return False
+                elif mpd_resp.status_code >= 400:
+                    mpd_resp.close()
+                    Script.log(f"[PLAY] MPD manifest returned HTTP {mpd_resp.status_code} from CDN: {uriToUse}", lvl=Script.ERROR)
+                    Script.notify("Playback Error", f"CDN returned HTTP {mpd_resp.status_code}")
+                    return False
+
                 mpd_text = mpd_resp.text
                 c_dict = {}
                 c_dict.update(get_session().cookies.get_dict())
@@ -550,6 +661,13 @@ def play(plugin, channel_id, showtime=None, srno=None, programId=None, begin=Non
                 return False
 
             m3u8Res = _m3u8_result[0]
+            if m3u8Res.status_code == 404:
+                Script.log(f"[PLAY] M3U8 manifest returned 404 Not Found from CDN: {uriToUse}", lvl=Script.ERROR)
+                if isCatchup:
+                    Script.notify("Catchup Unavailable", "This program is not available in JioTV archive.")
+                else:
+                    Script.notify("Playback Error", "Stream manifest not found (404).")
+                return False
             m3u8Res.raise_for_status()
 
             m3u8Headers = {k: str(v) for k, v in m3u8Headers.items() if v}

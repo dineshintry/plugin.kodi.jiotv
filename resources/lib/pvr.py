@@ -87,7 +87,7 @@ def m3ugen(plugin, notify="yes"):
 
         catchup = ""
         if channel.get("isCatchupAvailable"):
-            catchup = ' catchup="vod" catchup-source="{0}channel_id={1}&showtime={{H}}{{M}}{{S}}&srno={{Y}}{{m}}{{d}}&programId={{catchup-id}}" catchup-days="7"'.format(
+            catchup = ' catchup="vod" catchup-source="{0}channel_id={1}&showtime={{H}}{{M}}{{S}}&srno={{Y}}{{m}}{{d}}&programId={{catchup-id}}&utc={{utc}}&utcend={{utcend}}" catchup-days="7"'.format(
                 PLAY_URL, channel_id
             )
 

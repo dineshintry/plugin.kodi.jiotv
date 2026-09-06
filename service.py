@@ -60,10 +60,33 @@ try:
 except Exception as e:
     Script.log(f"Failed to start JioTV proxy service: {e}", lvl=Script.ERROR)
 
-if Settings.get_boolean("m3ugen"):
-    executebuiltin(
-        "RunPlugin(plugin://plugin.kodi.jiotv/resources/lib/main/m3ugen/?notify=no)"
-    )
+def _check_addon_update_and_m3u():
+    try:
+        from codequick.storage import PersistentDict
+        current_version = _addon.getAddonInfo("version") if _addon else ""
+        should_gen_m3u = Settings.get_boolean("m3ugen")
+        is_updated = False
+
+        with PersistentDict("localdb") as db:
+            last_version = db.get("_installed_addon_version", "")
+
+        if current_version and last_version != current_version:
+            Script.log(f"[UPDATE] Addon updated from '{last_version}' to '{current_version}'. Auto-updating playlist...", lvl=Script.INFO)
+            should_gen_m3u = True
+            is_updated = True
+            with PersistentDict("localdb") as db:
+                db["_installed_addon_version"] = current_version
+
+        if should_gen_m3u:
+            from resources.lib.pvr import m3ugen
+            m3ugen(None, notify="no")
+            Script.log("[UPDATE] Playlist generated successfully", lvl=Script.INFO)
+    except Exception as e:
+        Script.log(f"[UPDATE] Error during startup update check: {e}", lvl=Script.ERROR)
+
+_update_thread = threading.Thread(target=_check_addon_update_and_m3u)
+_update_thread.daemon = True
+_update_thread.start()
 
 # ─── Pre-warm TLS connections ────────────────────────────────────────────────
 # On Android TV via mobile hotspot, initial TLS handshakes can take 15+ seconds.

@@ -7,6 +7,7 @@ mds/*
 
 # Ignore test_scripts folder
 test_scripts/
+scratch/
 kodi.log
 *.log
 *.pickle
