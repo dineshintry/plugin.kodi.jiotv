@@ -36,6 +36,11 @@ v1.4.0_beta
 - Added: Port Kodi Favourites to TV Guide Favourites group in IPTV Simple Client.
 - Added: Confirmation popup dialog instructing users to restart Kodi/PVR for TV Guide favourites to reflect.
 - Fixed: Audio stream optimization automatically selecting and tagging highest bitrate audio track by default.
+- Fixed: Resolved 400 Bad Request error when playing guide programmes by parsing UTC timestamps and detecting ongoing broadcasts.
+- Fixed: Filtered out channels and shows lacking mobile OTT catchup rights in VOD menu to prevent 404 manifest errors.
+- Fixed: Handled 404 CDN manifest responses gracefully with clear archive availability notifications.
+- Fixed: Handled 403 unmapped Sony programs (e.g. SET HD) with clear notifications informing SonyLIV exclusivity.
+- Fixed: Eliminated Kodi startup crash (0xc0000409) by removing disruptive background PVR reload RPC calls.
 
 v1.3.7_beta
 - Added: OTP auto-trigger setting (disabled by default) to control whether login prompt triggers automatically upon session expiry.
